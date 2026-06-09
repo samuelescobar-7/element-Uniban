@@ -20,7 +20,14 @@ COL_RESPUESTA_F = 6
 COL_RESPUESTA_G = 7
 COL_RESPUESTA_K = 11
 
-VALID_RESPUESTAS_F = {"SÍ (Estándar ERP)", "Si (Componente Adicional)", "DES", "TER", "NO"}
+# Valores en MAYÚSCULAS — coinciden con normalizar() que hace .upper()
+VALID_RESPUESTAS_F = {
+    "SÍ (ESTÁNDAR ERP)",
+    "SI (COMPONENTE ADICIONAL)",
+    "DES",
+    "TER",
+    "NO",
+}
 VALID_RESPUESTAS_G = {"SI", "NO"}
 VALID_RESPUESTAS_K = {"COMPLETA", "CASI COMPLETA", "PARCIALMENTE COMPLETA", "INCOMPLETA", "TOTALMENTE INCOMPLETA"}
 
@@ -282,7 +289,7 @@ def analizar_hoja_experiencia_oferente_raw(wb, proveedor):
 
 
 # =========================
-# EQUIPO IMPLEMENTADOR — hoja "9." cols B(2) a L(12) desde fila 10
+# EQUIPO IMPLEMENTADOR
 # =========================
 def analizar_hoja_equipo_implementador(wb, proveedor):
     COLUMNAS = [
@@ -298,8 +305,8 @@ def analizar_hoja_equipo_implementador(wb, proveedor):
         "Fase en la que participa",
         "Documento soporte",
     ]
-    COL_INICIO = 2   # columna B
-    COL_FIN    = 12  # columna L
+    COL_INICIO = 2
+    COL_FIN    = 12
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("9.")), None)
     if hoja_nombre is None:
@@ -322,7 +329,7 @@ def analizar_hoja_equipo_implementador(wb, proveedor):
 
 
 # =========================
-# CAPACIDADES NUBE — hoja "12." cols B(2) a E(5) desde fila 10
+# CAPACIDADES NUBE
 # =========================
 def analizar_hoja_capacidades_nube(wb, proveedor):
     COLUMNAS = [
@@ -331,8 +338,8 @@ def analizar_hoja_capacidades_nube(wb, proveedor):
         "Respuesta del oferente",
         "Observaciones Adicionales del oferente",
     ]
-    COL_INICIO = 2   # columna B
-    COL_FIN    = 5   # columna E
+    COL_INICIO = 2
+    COL_FIN    = 5
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("12.")), None)
     if hoja_nombre is None:
@@ -355,7 +362,7 @@ def analizar_hoja_capacidades_nube(wb, proveedor):
 
 
 # =========================
-# SOPORTE Y MANTO — hoja "13." cols B(2) a F(6) desde fila 9
+# SOPORTE Y MANTO
 # =========================
 def analizar_hoja_soporte_manto(wb, proveedor):
     COLUMNAS = [
@@ -365,8 +372,8 @@ def analizar_hoja_soporte_manto(wb, proveedor):
         "Incluido en suscripción (SI/NO)",
         "Observaciones",
     ]
-    COL_INICIO = 2   # columna B
-    COL_FIN    = 6   # columna F
+    COL_INICIO = 2
+    COL_FIN    = 6
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("13.")), None)
     if hoja_nombre is None:
@@ -374,7 +381,7 @@ def analizar_hoja_soporte_manto(wb, proveedor):
 
     ws = wb[hoja_nombre]
     data = []
-    for r in range(9, 25):  # fila 9 a 24 inclusive
+    for r in range(9, 25):
         valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
         if all(v is None for v in valores):
             continue
@@ -389,7 +396,7 @@ def analizar_hoja_soporte_manto(wb, proveedor):
 
 
 # =========================
-# ANS / SLA — hoja "13." cols B(2) a F(6) filas 28 a 31
+# ANS / SLA
 # =========================
 def analizar_hoja_ans_sla(wb, proveedor):
     COLUMNAS = [
@@ -399,8 +406,8 @@ def analizar_hoja_ans_sla(wb, proveedor):
         "Horario de Cobertura",
         "% Descuento por Incumplimiento",
     ]
-    COL_INICIO = 2   # columna B
-    COL_FIN    = 6   # columna F
+    COL_INICIO = 2
+    COL_FIN    = 6
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("13.")), None)
     if hoja_nombre is None:
@@ -408,7 +415,7 @@ def analizar_hoja_ans_sla(wb, proveedor):
 
     ws = wb[hoja_nombre]
     data = []
-    for r in range(28, 32):  # filas 28 a 31 inclusive
+    for r in range(28, 32):
         valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
         if all(v is None for v in valores):
             continue
@@ -423,20 +430,19 @@ def analizar_hoja_ans_sla(wb, proveedor):
 
 
 # =========================
-# INFORMACIÓN DE LA SOLUCIÓN — Localizacion: lee filas 36, 37, 38; cols B(2), C(3), D(4)
+# INFORMACIÓN DE LA SOLUCIÓN — Localizacion
 # =========================
 def analizar_hoja_info_solucion(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor", "ID", "Requerimiento", "Respuesta"])
-
     ws = wb[hoja_nombre]
     FILAS = [36, 37, 38]
     data = []
     for r in FILAS:
-        id_val  = ws.cell(r, 2).value   # columna B
-        req_val = ws.cell(r, 3).value   # columna C
-        res_val = ws.cell(r, 4).value   # columna D
+        id_val  = ws.cell(r, 2).value
+        req_val = ws.cell(r, 3).value
+        res_val = ws.cell(r, 4).value
         data.append({
             "Proveedor":     proveedor,
             "ID":            str(id_val).strip()  if id_val  is not None else "",
@@ -447,20 +453,19 @@ def analizar_hoja_info_solucion(wb, proveedor):
 
 
 # =========================
-# INFORMACIÓN DE LA SOLUCIÓN — Evolución: lee filas 10, 11, 12, 13, 29 y 31; cols B(2), C(3), D(4)
+# INFORMACIÓN DE LA SOLUCIÓN — Evolución
 # =========================
 def analizar_hoja_evolucion(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor", "ID", "Requerimiento", "Respuesta"])
-
     ws = wb[hoja_nombre]
     FILAS = [10, 11, 12, 13, 29, 31]
     data = []
     for r in FILAS:
-        id_val  = ws.cell(r, 2).value   # columna B
-        req_val = ws.cell(r, 3).value   # columna C
-        res_val = ws.cell(r, 4).value   # columna D
+        id_val  = ws.cell(r, 2).value
+        req_val = ws.cell(r, 3).value
+        res_val = ws.cell(r, 4).value
         data.append({
             "Proveedor":     proveedor,
             "ID":            str(id_val).strip()  if id_val  is not None else "",
@@ -471,20 +476,19 @@ def analizar_hoja_evolucion(wb, proveedor):
 
 
 # =========================
-# INFORMACIÓN DE LA SOLUCIÓN — Ecosistema y capacidad de soporte de la solución: lee filas 32, 33, 34, 35; cols B(2), C(3), D(4)
+# INFORMACIÓN DE LA SOLUCIÓN — Ecosistema
 # =========================
 def analizar_hoja_ecosistema(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor", "ID", "Requerimiento", "Respuesta"])
-
     ws = wb[hoja_nombre]
-    FILAS = [32,33,34, 35]
+    FILAS = [32, 33, 34, 35]
     data = []
     for r in FILAS:
-        id_val  = ws.cell(r, 2).value   # columna B
-        req_val = ws.cell(r, 3).value   # columna C
-        res_val = ws.cell(r, 4).value   # columna D
+        id_val  = ws.cell(r, 2).value
+        req_val = ws.cell(r, 3).value
+        res_val = ws.cell(r, 4).value
         data.append({
             "Proveedor":     proveedor,
             "ID":            str(id_val).strip()  if id_val  is not None else "",
@@ -495,7 +499,7 @@ def analizar_hoja_ecosistema(wb, proveedor):
 
 
 # =========================
-# ALCANCE DE SERVICIOS — lee col C (SI/NO) y col E (calidad) desde fila 6
+# ALCANCE DE SERVICIOS
 # =========================
 def analizar_hoja_alcance_servicios(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("6.")), None)
@@ -618,18 +622,17 @@ def analizar_hoja_metodologia_raw(wb, proveedor):
 
 
 # =========================
-# ► CONSTRUCCIÓN DE TABLAS — orden original del Excel preservado
+# CONSTRUCCIÓN DE TABLAS
 # =========================
 def construir_tablas_cumplimiento(data):
     df = pd.DataFrame(data)
-    # Preservar el orden de aparición de las hojas (igual al workbook)
     orden_hojas = list(dict.fromkeys(df["Hoja"].tolist()))
     df_final = (
         df.pivot_table(
             index="Hoja", columns="Proveedor", values="Cumplimiento_%", aggfunc="first"
         )
         .fillna(0)
-        .reindex(orden_hojas)       # ← restaura orden original
+        .reindex(orden_hojas)
         .reset_index()
     )
     df_final.columns.name = None
@@ -640,14 +643,13 @@ def construir_tablas_cumplimiento(data):
 
 def construir_tablas_calidad(data_k):
     df_k = pd.DataFrame(data_k)
-    # Preservar el orden de aparición de las hojas (igual al workbook)
     orden_hojas = list(dict.fromkeys(df_k["Hoja"].tolist()))
     df_final_k = (
         df_k.pivot_table(
             index="Hoja", columns="Proveedor", values="Calidad_%", aggfunc="first"
         )
         .fillna(0)
-        .reindex(orden_hojas)       # ← restaura orden original
+        .reindex(orden_hojas)
         .reset_index()
     )
     df_final_k.columns.name = None
@@ -680,12 +682,10 @@ def construir_tabla_integrada(
         filas.append(fila)
 
     df_integrado = pd.DataFrame(filas)
-
     total_fila = {"Hoja": "TOTAL"}
     for prov in proveedores:
         total_fila[prov] = round(df_integrado[prov].sum(), 2)
     df_total_integrado = pd.DataFrame([total_fila])
-
     return df_integrado, df_total_integrado
 
 
@@ -731,7 +731,6 @@ def obtener_fecha_modificacion(archivo_bytes):
                     return "No disponible"
 
                 raw = modified_el.text.strip()
-
                 formatos = [
                     "%Y-%m-%dT%H:%M:%SZ",
                     "%Y-%m-%dT%H:%M:%S",
@@ -781,9 +780,7 @@ def construir_hoja_info_analisis(
 ):
     bloques = []
 
-    df_fecha = pd.DataFrame([{
-        "Fecha y hora de generación del reporte": fecha_generacion
-    }])
+    df_fecha = pd.DataFrame([{"Fecha y hora de generación del reporte": fecha_generacion}])
     bloques.append(("Generación del reporte", df_fecha))
 
     params_generales = [
@@ -793,17 +790,11 @@ def construir_hoja_info_analisis(
     df_params = pd.DataFrame(params_generales)
     bloques.append(("Parámetros generales", df_params))
 
-    pesos_f_rows = [
-        {"Respuesta": k, "Peso aplicado": v}
-        for k, v in pesos_f.items()
-    ]
+    pesos_f_rows = [{"Respuesta": k, "Peso aplicado": v} for k, v in pesos_f.items()]
     df_pesos_f = pd.DataFrame(pesos_f_rows)
     bloques.append(("Pesos cubrimiento (columna F)", df_pesos_f))
 
-    pesos_k_rows = [
-        {"Respuesta": k, "Peso aplicado": v}
-        for k, v in pesos_k.items()
-    ]
+    pesos_k_rows = [{"Respuesta": k, "Peso aplicado": v} for k, v in pesos_k.items()]
     df_pesos_k = pd.DataFrame(pesos_k_rows)
     bloques.append(("Pesos calidad (columna K)", df_pesos_k))
 
@@ -814,22 +805,16 @@ def construir_hoja_info_analisis(
     bloques.append(("Pesos totales puntaje combinado", df_pesos_totales))
 
     if pesos_hojas_func:
-        df_ph_func = pd.DataFrame([
-            {"Hoja": h, "Peso asignado (%)": p}
-            for h, p in pesos_hojas_func.items()
-        ])
+        df_ph_func = pd.DataFrame([{"Hoja": h, "Peso asignado (%)": p} for h, p in pesos_hojas_func.items()])
         bloques.append(("Pesos por hoja funcional", df_ph_func))
 
     if pesos_hojas_nf:
-        df_ph_nf = pd.DataFrame([
-            {"Hoja": h, "Peso asignado (%)": p}
-            for h, p in pesos_hojas_nf.items()
-        ])
+        df_ph_nf = pd.DataFrame([{"Hoja": h, "Peso asignado (%)": p} for h, p in pesos_hojas_nf.items()])
         bloques.append(("Pesos por hoja no funcional", df_ph_nf))
 
     df_pesos_adicionales = pd.DataFrame([
-        {"Parámetro": "Peso alcance",      "Valor": peso_alcance},
-        {"Parámetro": "Peso metodología",  "Valor": peso_metodologia},
+        {"Parámetro": "Peso alcance",     "Valor": peso_alcance},
+        {"Parámetro": "Peso metodología", "Valor": peso_metodologia},
     ])
     bloques.append(("Pesos alcance y metodología", df_pesos_adicionales))
 
@@ -874,26 +859,16 @@ def escribir_hoja_info_analisis(writer, bloques):
 
 
 def _safe_to_excel(df, writer, sheet_name):
-    """Escribe un DataFrame en Excel solo si no es None y no está vacío."""
     if df is not None and not df.empty:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
 
 
-# =========================
-# HELPER: orden original de filas para pivot de requerimientos
-# =========================
 def _orden_requerimientos(lista_dfs):
-    """Devuelve lista de (ID, Requerimiento) en el orden original del archivo fuente.
-    Usa todos los proveedores para no perder filas y ordena por Fila (entero)
-    para evitar el orden lexicográfico de los IDs como strings."""
     df_all = pd.concat(lista_dfs).sort_values("Fila")
     pares = list(zip(df_all["ID"].tolist(), df_all["Requerimiento"].tolist()))
     return list(dict.fromkeys(pares))
 
 
-# =========================
-# HELPER: pivot de requerimientos preservando orden original
-# =========================
 def _pivot_ordenado(df_datos, col_valor, orden):
     df_idx = df_datos.copy()
     df_idx["_idx"] = list(zip(df_idx["ID"], df_idx["Requerimiento"]))
@@ -915,9 +890,6 @@ def _pivot_ordenado(df_datos, col_valor, orden):
     return pivot
 
 
-# =========================
-# HELPER: calcular tabla alcance de servicios
-# =========================
 def calcular_tabla_alcance(data_alcance_servicios, nombres_proveedores, pesos_k,
                             peso_total_cumplimiento, peso_total_calidad, peso_alcance):
     if not data_alcance_servicios:
@@ -925,7 +897,6 @@ def calcular_tabla_alcance(data_alcance_servicios, nombres_proveedores, pesos_k,
 
     df_alc_all = pd.concat(data_alcance_servicios, ignore_index=True)
     todos_provs = nombres_proveedores if nombres_proveedores else sorted(df_alc_all["Proveedor"].unique())
-
     max_k = pesos_k.get("COMPLETA", 1.0)
 
     fila_fmt = {"Métrica": "Puntaje alcance"}
@@ -943,15 +914,12 @@ def calcular_tabla_alcance(data_alcance_servicios, nombres_proveedores, pesos_k,
         pct_si = (n_si / total) * 100
 
         if max_k > 0:
-            pct_cal = df_prov["Respuesta_E"].map(
-                lambda v: pesos_k.get(v, 0.0)
-            ).mean() / max_k * 100
+            pct_cal = df_prov["Respuesta_E"].map(lambda v: pesos_k.get(v, 0.0)).mean() / max_k * 100
         else:
             pct_cal = 0.0
 
         puntaje = round(
-            (pct_si * peso_total_cumplimiento + pct_cal * peso_total_calidad) * peso_alcance,
-            2
+            (pct_si * peso_total_cumplimiento + pct_cal * peso_total_calidad) * peso_alcance, 2
         )
         fila_fmt[prov] = f"{puntaje:.2f}%"
         fila_raw[prov] = puntaje
@@ -959,9 +927,6 @@ def calcular_tabla_alcance(data_alcance_servicios, nombres_proveedores, pesos_k,
     return pd.DataFrame([fila_fmt]), pd.DataFrame([fila_raw])
 
 
-# =========================
-# HELPER: calcular tabla metodología implementación
-# =========================
 def calcular_tabla_metodologia(data_metodologia, nombres_proveedores, pesos_k,
                                 peso_total_cumplimiento, peso_total_calidad, peso_metodologia):
     if not data_metodologia:
@@ -969,7 +934,6 @@ def calcular_tabla_metodologia(data_metodologia, nombres_proveedores, pesos_k,
 
     df_met_all = pd.concat(data_metodologia, ignore_index=True)
     todos_provs = nombres_proveedores if nombres_proveedores else sorted(df_met_all["Proveedor"].unique())
-
     max_k = pesos_k.get("COMPLETA", 1.0)
 
     fila_fmt = {"Métrica": "Puntaje metodología"}
@@ -987,15 +951,12 @@ def calcular_tabla_metodologia(data_metodologia, nombres_proveedores, pesos_k,
         pct_si = (n_si / total) * 100
 
         if max_k > 0:
-            pct_cal = df_prov["Respuesta_E"].map(
-                lambda v: pesos_k.get(v, 0.0)
-            ).mean() / max_k * 100
+            pct_cal = df_prov["Respuesta_E"].map(lambda v: pesos_k.get(v, 0.0)).mean() / max_k * 100
         else:
             pct_cal = 0.0
 
         puntaje = round(
-            (pct_si * peso_total_cumplimiento + pct_cal * peso_total_calidad) * peso_metodologia,
-            2
+            (pct_si * peso_total_cumplimiento + pct_cal * peso_total_calidad) * peso_metodologia, 2
         )
         fila_fmt[prov] = f"{puntaje:.2f}%"
         fila_raw[prov] = puntaje
@@ -1014,21 +975,26 @@ if st.sidebar.button("Reiniciar análisis"):
     st.rerun()
 
 with st.sidebar:
+    # ── Defaults ──────────────────────────────────────────────────────────
     st.session_state.setdefault("ni_peso_col_f", 100)
     st.session_state.setdefault("ni_peso_col_g", 100)
-    st.session_state.setdefault("ni_si_pct", 100)
-    st.session_state.setdefault("ni_desarrollo_pct", 50)
-    st.session_state.setdefault("ni_tercero_pct", 50)
-    st.session_state.setdefault("ni_no_pct", 0)
-    st.session_state.setdefault("ni_k_completa", 100)
-    st.session_state.setdefault("ni_k_casi_completa", 75)
+    # Respuestas columna F (nuevas)
+    st.session_state.setdefault("ni_si_estandar_pct",        100)
+    st.session_state.setdefault("ni_si_componente_pct",       75)
+    st.session_state.setdefault("ni_des_pct",                 50)
+    st.session_state.setdefault("ni_ter_pct",                 50)
+    st.session_state.setdefault("ni_no_pct",                   0)
+    # Calidad K
+    st.session_state.setdefault("ni_k_completa",             100)
+    st.session_state.setdefault("ni_k_casi_completa",         75)
     st.session_state.setdefault("ni_k_parcialmente_completa", 50)
-    st.session_state.setdefault("ni_k_incompleta", 25)
-    st.session_state.setdefault("ni_k_totalmente_incompleta", 0)
-    st.session_state.setdefault("ni_peso_total_cum", 100)
-    st.session_state.setdefault("ni_peso_total_cal", 100)
-    st.session_state.setdefault("ni_peso_alcance", 100)
-    st.session_state.setdefault("ni_peso_metodologia", 100)
+    st.session_state.setdefault("ni_k_incompleta",            25)
+    st.session_state.setdefault("ni_k_totalmente_incompleta",  0)
+    # Pesos totales
+    st.session_state.setdefault("ni_peso_total_cum",  100)
+    st.session_state.setdefault("ni_peso_total_cal",  100)
+    st.session_state.setdefault("ni_peso_alcance",    100)
+    st.session_state.setdefault("ni_peso_metodologia",100)
 
     st.header("Pesos cumplimiento funcional")
     st.caption("Todos los pesos se ingresan de 0 a 100 (se convierten internamente a escala 0.0–1.0)")
@@ -1048,35 +1014,45 @@ with st.sidebar:
     peso_col_g = peso_col_g_pct / 100
 
     st.markdown("**Pesos cubrimiento (proporción del peso máximo col F):**")
-    st.caption("Cada valor indica qué porcentaje del peso máximo de col F se asigna a esa respuesta. Rango: 0 a 100")
+    st.caption(
+        "Respuestas válidas en col F: **SÍ (Estándar ERP)**, **Si (Componente Adicional)**, "
+        "**DES**, **TER**, **NO**. Rango: 0 a 100"
+    )
 
-    _si_pct = st.number_input(
-        "SI (columna F) — rango: 0 a 100, pred: 100",
+    _si_estandar_pct = st.number_input(
+        "SÍ (Estándar ERP) — rango: 0 a 100, pred: 100",
         min_value=0, max_value=100, step=5,
-        key="ni_si_pct"
+        key="ni_si_estandar_pct"
     )
-    _desarrollo_pct = st.number_input(
-        "DESARROLLO (columna F) — rango: 0 a 100, pred: 50",
+    _si_componente_pct = st.number_input(
+        "Si (Componente Adicional) — rango: 0 a 100, pred: 75",
         min_value=0, max_value=100, step=5,
-        key="ni_desarrollo_pct"
+        key="ni_si_componente_pct"
     )
-    _tercero_pct = st.number_input(
-        "TERCERO (columna F) — rango: 0 a 100, pred: 50",
+    _des_pct = st.number_input(
+        "DES — rango: 0 a 100, pred: 50",
         min_value=0, max_value=100, step=5,
-        key="ni_tercero_pct"
+        key="ni_des_pct"
+    )
+    _ter_pct = st.number_input(
+        "TER — rango: 0 a 100, pred: 50",
+        min_value=0, max_value=100, step=5,
+        key="ni_ter_pct"
     )
     _no_pct = st.number_input(
-        "NO (columna F) — rango: 0 a 100, pred: 0",
+        "NO — rango: 0 a 100, pred: 0",
         min_value=0, max_value=100, step=5,
         key="ni_no_pct"
     )
 
+    # Keys coinciden EXACTAMENTE con los valores normalizados (.upper()) de VALID_RESPUESTAS_F
     pesos_f = {
-        "SI":         (_si_pct         / 100) * peso_col_f,
-        "DESARROLLO": (_desarrollo_pct / 100) * peso_col_f,
-        "TERCERO":    (_tercero_pct    / 100) * peso_col_f,
-        "NO":         (_no_pct         / 100) * peso_col_f,
-        "VACIO": 0.0
+        "SÍ (ESTÁNDAR ERP)":        (_si_estandar_pct   / 100) * peso_col_f,
+        "SI (COMPONENTE ADICIONAL)": (_si_componente_pct / 100) * peso_col_f,
+        "DES":                       (_des_pct           / 100) * peso_col_f,
+        "TER":                       (_ter_pct           / 100) * peso_col_f,
+        "NO":                        (_no_pct            / 100) * peso_col_f,
+        "VACIO": 0.0,
     }
 
     st.divider()
@@ -1115,7 +1091,7 @@ with st.sidebar:
         "PARCIALMENTE COMPLETA":  _k_parcialmente_completa  / 100,
         "INCOMPLETA":             _k_incompleta             / 100,
         "TOTALMENTE INCOMPLETA":  _k_totalmente_incompleta  / 100,
-        "VACIO": 0.0
+        "VACIO": 0.0,
     }
 
     st.markdown("**Pesos totales del puntaje combinado:**")
@@ -1146,7 +1122,7 @@ with st.sidebar:
     peso_alcance = _peso_alcance_pct / 100
 
     st.markdown("**Peso metodología:**")
-    st.caption("Rango: 0 a 100 — se aplica multiplicando el porcentaje de SI en la tabla de metodología implementación")
+    st.caption("Rango: 0 a 100")
     _peso_metodologia_pct = st.number_input(
         "Peso metodología — rango: 0 a 100, pred: 100",
         min_value=0, max_value=100, step=5,
@@ -1326,11 +1302,13 @@ if archivos and not st.session_state["archivos_cargados"]:
         "nombres_proveedores": nombres_proveedores,
         "param_peso_col_f_raw": peso_col_f_pct,
         "param_peso_col_g_raw": peso_col_g_pct,
+        # Labels legibles para el reporte (no normalizados)
         "param_pesos_f_raw": {
-            "SI":         _si_pct,
-            "DESARROLLO": _desarrollo_pct,
-            "TERCERO":    _tercero_pct,
-            "NO":         _no_pct,
+            "SÍ (Estándar ERP)":        _si_estandar_pct,
+            "Si (Componente Adicional)": _si_componente_pct,
+            "DES":                       _des_pct,
+            "TER":                       _ter_pct,
+            "NO":                        _no_pct,
         },
         "param_pesos_k_raw": {
             "COMPLETA":              _k_completa,
@@ -1537,8 +1515,7 @@ if st.session_state["archivos_cargados"]:
         with col_input:
             pesos_hojas_func[hoja_w] = st.number_input(
                 label=hoja_w,
-                min_value=0,
-                max_value=100,
+                min_value=0, max_value=100,
                 value=st.session_state.get(f"peso_hoja_func_{hoja_w}", 100),
                 step=1,
                 key=f"peso_hoja_func_{hoja_w}",
@@ -1614,8 +1591,7 @@ if st.session_state["archivos_cargados"]:
         with col_input:
             pesos_hojas_nf[hoja_w] = st.number_input(
                 label=hoja_w,
-                min_value=0,
-                max_value=100,
+                min_value=0, max_value=100,
                 value=st.session_state.get(f"peso_hoja_nf_{hoja_w}", 100),
                 step=1,
                 key=f"peso_hoja_nf_{hoja_w}",
@@ -1657,7 +1633,6 @@ if st.session_state["archivos_cargados"]:
     )
     pivot_sector = pd.DataFrame()
     if data_experiencia:
-        import json
         df_exp_all = pd.concat(data_experiencia, ignore_index=True)
         todos_proveedores = list(df_exp_all["Proveedor"].unique())
         pivot_sector = (
@@ -1667,6 +1642,7 @@ if st.session_state["archivos_cargados"]:
             .reindex(columns=todos_proveedores, fill_value=0)
             .reset_index()
         )
+
     # ---- CALIDAD DEL PROPONENTE ----
     st.subheader("Calidad del proponente")
 
@@ -1676,26 +1652,22 @@ if st.session_state["archivos_cargados"]:
         "Fórmula: (% de SI × Peso total cumplimiento + % de calidad col E × Peso total calidad) × Peso alcance"
     )
 
-    _ptcum_alc  = st.session_state.get("ni_peso_total_cum", 100) / 100
-    _ptcal_alc  = st.session_state.get("ni_peso_total_cal", 100) / 100
-    _pa_alc     = st.session_state.get("ni_peso_alcance",   100) / 100
+    _ptcum_alc = st.session_state.get("ni_peso_total_cum", 100) / 100
+    _ptcal_alc = st.session_state.get("ni_peso_total_cal", 100) / 100
+    _pa_alc    = st.session_state.get("ni_peso_alcance",   100) / 100
 
     _pesos_k_alc = {
         "COMPLETA":               st.session_state.get("ni_k_completa",               100) / 100,
-        "CASI COMPLETA":          st.session_state.get("ni_k_casi_completa",           75) / 100,
-        "PARCIALMENTE COMPLETA":  st.session_state.get("ni_k_parcialmente_completa",   50) / 100,
-        "INCOMPLETA":             st.session_state.get("ni_k_incompleta",              25) / 100,
-        "TOTALMENTE INCOMPLETA":  st.session_state.get("ni_k_totalmente_incompleta",    0) / 100,
+        "CASI COMPLETA":          st.session_state.get("ni_k_casi_completa",           75)  / 100,
+        "PARCIALMENTE COMPLETA":  st.session_state.get("ni_k_parcialmente_completa",   50)  / 100,
+        "INCOMPLETA":             st.session_state.get("ni_k_incompleta",              25)  / 100,
+        "TOTALMENTE INCOMPLETA":  st.session_state.get("ni_k_totalmente_incompleta",    0)  / 100,
         "VACIO": 0.0,
     }
 
     df_alcance_tabla_fmt, df_alcance_tabla_raw = calcular_tabla_alcance(
-        data_alcance_servicios,
-        nombres_proveedores,
-        _pesos_k_alc,
-        _ptcum_alc,
-        _ptcal_alc,
-        _pa_alc,
+        data_alcance_servicios, nombres_proveedores, _pesos_k_alc,
+        _ptcum_alc, _ptcal_alc, _pa_alc,
     )
 
     if df_alcance_tabla_fmt is not None:
@@ -1721,20 +1693,16 @@ if st.session_state["archivos_cargados"]:
 
     _pesos_k_met = {
         "COMPLETA":               st.session_state.get("ni_k_completa",               100) / 100,
-        "CASI COMPLETA":          st.session_state.get("ni_k_casi_completa",           75) / 100,
-        "PARCIALMENTE COMPLETA":  st.session_state.get("ni_k_parcialmente_completa",   50) / 100,
-        "INCOMPLETA":             st.session_state.get("ni_k_incompleta",              25) / 100,
-        "TOTALMENTE INCOMPLETA":  st.session_state.get("ni_k_totalmente_incompleta",    0) / 100,
+        "CASI COMPLETA":          st.session_state.get("ni_k_casi_completa",           75)  / 100,
+        "PARCIALMENTE COMPLETA":  st.session_state.get("ni_k_parcialmente_completa",   50)  / 100,
+        "INCOMPLETA":             st.session_state.get("ni_k_incompleta",              25)  / 100,
+        "TOTALMENTE INCOMPLETA":  st.session_state.get("ni_k_totalmente_incompleta",    0)  / 100,
         "VACIO": 0.0,
     }
 
     df_met_tabla_fmt, df_met_tabla_raw = calcular_tabla_metodologia(
-        data_metodologia,
-        nombres_proveedores,
-        _pesos_k_met,
-        _ptcum_met,
-        _ptcal_met,
-        _pm_met,
+        data_metodologia, nombres_proveedores, _pesos_k_met,
+        _ptcum_met, _ptcal_met, _pm_met,
     )
 
     if df_met_tabla_fmt is not None:
@@ -1749,13 +1717,12 @@ if st.session_state["archivos_cargados"]:
         st.info("No se encontraron datos de metodología (hoja '7.').")
 
     st.info(
-        "La información consolidada de experiencia del oferente y equipo implerementador "
+        "La información consolidada de experiencia del oferente y equipo implementador "
         "se encuentran en el reporte final."
     )
 
     # ---- OTRAS ----
     st.subheader("OTRAS")
-
     st.info(
         "La información consolidada de capacidades de nube, soporte y manto "
         "se encuentran en el reporte final."
@@ -1789,21 +1756,22 @@ if st.session_state["archivos_cargados"]:
         {h: st.session_state.get(f"peso_hoja_nf_{h}", 100) for h in df_final_nf["Hoja"].tolist()}
     )
 
-    # ── Fecha y nombre del archivo de descarga ──────────────────────────────
-    _now_bogota     = datetime.now(tz=ZoneInfo("America/Bogota"))
+    _now_bogota      = datetime.now(tz=ZoneInfo("America/Bogota"))
     fecha_generacion = _now_bogota.strftime("%Y-%m-%d %H:%M:%S")
-    _fecha_nombre   = _now_bogota.strftime("%d-%m-%Y-%H-%M-%S")
-    nombre_reporte  = f"reporte-magnex-{_fecha_nombre}.xlsx"
-    # ───────────────────────────────────────────────────────────────────────
+    _fecha_nombre    = _now_bogota.strftime("%d-%m-%Y-%H-%M-%S")
+    nombre_reporte   = f"reporte-magnex-{_fecha_nombre}.xlsx"
 
     bloques_info = construir_hoja_info_analisis(
         fecha_generacion=fecha_generacion,
         peso_col_f=st.session_state.get("param_peso_col_f_raw", 100),
         peso_col_g=st.session_state.get("param_peso_col_g_raw", 100),
-        pesos_f=st.session_state.get("param_pesos_f_raw", {"SI": 100, "DESARROLLO": 50, "TERCERO": 50, "NO": 0}),
+        pesos_f=st.session_state.get("param_pesos_f_raw", {
+            "SÍ (Estándar ERP)": 100, "Si (Componente Adicional)": 75,
+            "DES": 50, "TER": 50, "NO": 0,
+        }),
         pesos_k=st.session_state.get("param_pesos_k_raw", {
             "COMPLETA": 100, "CASI COMPLETA": 75,
-            "PARCIALMENTE COMPLETA": 50, "INCOMPLETA": 25, "TOTALMENTE INCOMPLETA": 0
+            "PARCIALMENTE COMPLETA": 50, "INCOMPLETA": 25, "TOTALMENTE INCOMPLETA": 0,
         }),
         peso_total_cumplimiento=st.session_state.get("param_peso_total_cumplimiento_raw", 100),
         peso_total_calidad=st.session_state.get("param_peso_total_calidad_raw", 100),
@@ -1836,7 +1804,6 @@ if st.session_state["archivos_cargados"]:
                 start_row += 1
             return start_row + 1
 
-        # ── Detalle por hoja FUNCIONAL ──────────────────────────────────────
         for hoja_det, lista_dfs in detalles_globales.items():
             df_det = pd.concat(lista_dfs)
             df_det["Cumplimiento_%"] = df_det["Peso_Total"] * 100
@@ -1858,7 +1825,6 @@ if st.session_state["archivos_cargados"]:
             if df_pivot_cal is not None:
                 fila_ws = _write_pivot_block(ws_det, df_pivot_cal, "Calidad por requerimiento", fila_ws)
 
-        # ── Detalle por hoja NO FUNCIONAL ───────────────────────────────────
         for hoja_det, lista_dfs in detalles_globales_nf.items():
             df_det = pd.concat(lista_dfs)
             df_det["Cumplimiento_%"] = df_det["Peso_Total"] * 100
@@ -1880,7 +1846,6 @@ if st.session_state["archivos_cargados"]:
             if df_pivot_cal is not None:
                 fila_ws = _write_pivot_block(ws_det, df_pivot_cal, "Calidad por requerimiento", fila_ws)
 
-        # ── Tablas funcionales ──────────────────────────────────────────────
         _safe_to_excel(df_final,   writer, "F - Comparativo")
         _safe_to_excel(df_final_k, writer, "F - Calidad por hoja")
 
@@ -1893,7 +1858,6 @@ if st.session_state["archivos_cargados"]:
         _safe_to_excel(df_puntaje_func_export,       writer, "F - Puntaje funcional")
         _safe_to_excel(df_total_puntaje_func_export, writer, "F - Total puntaje")
 
-        # ── Tablas no funcionales ───────────────────────────────────────────
         _safe_to_excel(df_final_nf,   writer, "NF - Comparativo")
         _safe_to_excel(df_final_k_nf, writer, "NF - Calidad por hoja")
 
@@ -1906,7 +1870,6 @@ if st.session_state["archivos_cargados"]:
         _safe_to_excel(df_puntaje_nf_export,       writer, "NF - Puntaje")
         _safe_to_excel(df_total_puntaje_nf_export, writer, "NF - Total puntaje")
 
-        # ── Experiencia fabricante ──────────────────────────────────────────
         if data_experiencia_raw:
             df_exp_raw_export = pd.concat(data_experiencia_raw, ignore_index=True)
             _safe_to_excel(df_exp_raw_export, writer, "Exp - Fabricante completa")
@@ -1914,37 +1877,26 @@ if st.session_state["archivos_cargados"]:
         if data_experiencia:
             _safe_to_excel(pivot_sector, writer, "Exp - Por sector")
 
-        # ── Información de la Solución — Localizacion ──────────────────────
         if data_info_solucion:
             df_info_sol_export = pd.concat(data_info_solucion, ignore_index=True)
             _safe_to_excel(df_info_sol_export, writer, "Localizacion")
 
-        # ── Información de la Solución — Evolución ──────────────────────────
         if data_evolucion:
             df_evol_export = pd.concat(data_evolucion, ignore_index=True)
             _safe_to_excel(df_evol_export, writer, "Evolucion")
 
-        # ── Información de la Solución — Ecosistema ────────────────────
         if data_red_partners:
             df_red_export = pd.concat(data_red_partners, ignore_index=True)
             _safe_to_excel(df_red_export, writer, "Ecosistema")
 
-        # ── Alcance de servicios ────────────────────────────────────────────
         if data_alcance_servicios_raw:
             df_alc_raw_export = pd.concat(data_alcance_servicios_raw, ignore_index=True)
-
             orden_servicios = list(dict.fromkeys(df_alc_raw_export["Servicio"].tolist()))
 
             df_alc_pivot_sino = (
                 df_alc_raw_export[["Proveedor", "Servicio", "Incluido (SI/NO)"]]
-                .pivot_table(
-                    index="Servicio",
-                    columns="Proveedor",
-                    values="Incluido (SI/NO)",
-                    aggfunc="first"
-                )
-                .reindex(orden_servicios)
-                .reset_index()
+                .pivot_table(index="Servicio", columns="Proveedor", values="Incluido (SI/NO)", aggfunc="first")
+                .reindex(orden_servicios).reset_index()
             )
             df_alc_pivot_sino.columns.name = None
             cols_sino = ["Servicio"] + [p for p in nombres_proveedores if p in df_alc_pivot_sino.columns]
@@ -1952,14 +1904,8 @@ if st.session_state["archivos_cargados"]:
 
             df_alc_pivot_cal = (
                 df_alc_raw_export[["Proveedor", "Servicio", "Calidad"]]
-                .pivot_table(
-                    index="Servicio",
-                    columns="Proveedor",
-                    values="Calidad",
-                    aggfunc="first"
-                )
-                .reindex(orden_servicios)
-                .reset_index()
+                .pivot_table(index="Servicio", columns="Proveedor", values="Calidad", aggfunc="first")
+                .reindex(orden_servicios).reset_index()
             )
             df_alc_pivot_cal.columns.name = None
             cols_cal = ["Servicio"] + [p for p in nombres_proveedores if p in df_alc_pivot_cal.columns]
@@ -1969,12 +1915,8 @@ if st.session_state["archivos_cargados"]:
             fila_ws = 1
             fila_ws = _write_pivot_block(ws_alc, df_alc_pivot_sino, "Incluido (SI/NO) por proveedor", fila_ws)
             fila_ws = _write_pivot_block(ws_alc, df_alc_pivot_cal,  "Calidad por proveedor",          fila_ws)
-
             for col in ws_alc.columns:
-                max_len = max(
-                    (len(str(cell.value)) for cell in col if cell.value is not None),
-                    default=0
-                )
+                max_len = max((len(str(c.value)) for c in col if c.value is not None), default=0)
                 ws_alc.column_dimensions[col[0].column_letter].width = min(max_len + 4, 60)
 
         _ptcum_rep = st.session_state.get("param_peso_total_cumplimiento_raw", 100) / 100
@@ -1995,58 +1937,34 @@ if st.session_state["archivos_cargados"]:
         if df_alc_export_raw is not None:
             _safe_to_excel(df_alc_export_raw, writer, "Alcance de servicios")
 
-        # ── Metodología ─────────────────────────────────────────────────────
         if data_metodologia_raw:
             df_met_raw_export = pd.concat(data_metodologia_raw, ignore_index=True)
-
-            orden_elementos = list(dict.fromkeys(
-                df_met_raw_export["Elemento de la Metodología"].tolist()
-            ))
+            orden_elementos = list(dict.fromkeys(df_met_raw_export["Elemento de la Metodología"].tolist()))
 
             df_met_pivot_sino = (
                 df_met_raw_export[["Proveedor", "Elemento de la Metodología", "Incluido (SI/NO)"]]
-                .pivot_table(
-                    index="Elemento de la Metodología",
-                    columns="Proveedor",
-                    values="Incluido (SI/NO)",
-                    aggfunc="first"
-                )
-                .reindex(orden_elementos)
-                .reset_index()
+                .pivot_table(index="Elemento de la Metodología", columns="Proveedor", values="Incluido (SI/NO)", aggfunc="first")
+                .reindex(orden_elementos).reset_index()
             )
             df_met_pivot_sino.columns.name = None
-            cols_met_sino = ["Elemento de la Metodología"] + [
-                p for p in nombres_proveedores if p in df_met_pivot_sino.columns
-            ]
+            cols_met_sino = ["Elemento de la Metodología"] + [p for p in nombres_proveedores if p in df_met_pivot_sino.columns]
             df_met_pivot_sino = df_met_pivot_sino[cols_met_sino]
 
             df_met_pivot_cal = (
                 df_met_raw_export[["Proveedor", "Elemento de la Metodología", "Calidad"]]
-                .pivot_table(
-                    index="Elemento de la Metodología",
-                    columns="Proveedor",
-                    values="Calidad",
-                    aggfunc="first"
-                )
-                .reindex(orden_elementos)
-                .reset_index()
+                .pivot_table(index="Elemento de la Metodología", columns="Proveedor", values="Calidad", aggfunc="first")
+                .reindex(orden_elementos).reset_index()
             )
             df_met_pivot_cal.columns.name = None
-            cols_met_cal = ["Elemento de la Metodología"] + [
-                p for p in nombres_proveedores if p in df_met_pivot_cal.columns
-            ]
+            cols_met_cal = ["Elemento de la Metodología"] + [p for p in nombres_proveedores if p in df_met_pivot_cal.columns]
             df_met_pivot_cal = df_met_pivot_cal[cols_met_cal]
 
             ws_met = writer.book.create_sheet("Metodologia - completa")
             fila_ws = 1
             fila_ws = _write_pivot_block(ws_met, df_met_pivot_sino, "Incluido (SI/NO) por proveedor", fila_ws)
             fila_ws = _write_pivot_block(ws_met, df_met_pivot_cal,  "Calidad por proveedor",          fila_ws)
-
             for col in ws_met.columns:
-                max_len = max(
-                    (len(str(cell.value)) for cell in col if cell.value is not None),
-                    default=0
-                )
+                max_len = max((len(str(c.value)) for c in col if c.value is not None), default=0)
                 ws_met.column_dimensions[col[0].column_letter].width = min(max_len + 4, 60)
 
         _ptcum_rep_met = st.session_state.get("param_peso_total_cumplimiento_raw", 100) / 100
@@ -2068,7 +1986,6 @@ if st.session_state["archivos_cargados"]:
         if df_met_export_raw is not None:
             _safe_to_excel(df_met_export_raw, writer, "Metodologia Implementacion")
 
-        # ── Experiencia oferente ────────────────────────────────────────────
         if data_experiencia_oferente:
             _df_of_all = pd.concat(data_experiencia_oferente, ignore_index=True)
             _provs_of = list(_df_of_all["Proveedor"].unique())
@@ -2084,38 +2001,25 @@ if st.session_state["archivos_cargados"]:
                 _safe_to_excel(df_exp_of_raw_export, writer, "Exp - Oferente completa")
             _safe_to_excel(_pivot_of, writer, "Exp - Oferente por sector")
 
-        # ── Equipo Implementador ────────────────────────────────────────────
         if data_equipo_implementador:
             df_equipo_export = pd.concat(data_equipo_implementador, ignore_index=True)
             _safe_to_excel(df_equipo_export, writer, "Equipo Implementador")
 
-        # ── Capacidades Nube ────────────────────────────────────────────────
         if data_capacidades_nube:
             df_cap_nube_export = pd.concat(data_capacidades_nube, ignore_index=True)
             _safe_to_excel(df_cap_nube_export, writer, "Capacidades Nube")
 
-        # ── Soporte y Manto + ANS/SLA ───────────────────────────────────────
         if data_soporte_manto or data_ans_sla:
             ws_sm = writer.book.create_sheet("Soporte y Manto")
             fila_sm = 1
-
             if data_soporte_manto:
                 df_soporte_export = pd.concat(data_soporte_manto, ignore_index=True)
                 fila_sm = _write_pivot_block(ws_sm, df_soporte_export, "Soporte y Manto", fila_sm)
-
             if data_ans_sla:
                 df_ans_export = pd.concat(data_ans_sla, ignore_index=True)
-                fila_sm = _write_pivot_block(
-                    ws_sm, df_ans_export,
-                    "ACUERDOS DE NIVEL DE SERVICIO (ANS / SLA)",
-                    fila_sm
-                )
-
+                fila_sm = _write_pivot_block(ws_sm, df_ans_export, "ACUERDOS DE NIVEL DE SERVICIO (ANS / SLA)", fila_sm)
             for col in ws_sm.columns:
-                max_len = max(
-                    (len(str(cell.value)) for cell in col if cell.value is not None),
-                    default=0
-                )
+                max_len = max((len(str(c.value)) for c in col if c.value is not None), default=0)
                 ws_sm.column_dimensions[col[0].column_letter].width = min(max_len + 4, 60)
 
         escribir_hoja_info_analisis(writer, bloques_info)
