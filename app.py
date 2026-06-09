@@ -54,7 +54,7 @@ def es_hoja_no_funcional(nombre):
 
 def detectar_filas(ws):
     filas = []
-    for r in range(9, ws.max_row + 1):
+    for r in range(2, ws.max_row + 1):
         val = normalizar(ws.cell(r, 1).value)
         if "*** FIN DEL DOCUMENTO ***" in val:
             break
