@@ -883,9 +883,11 @@ def _safe_to_excel(df, writer, sheet_name):
 # HELPER: orden original de filas para pivot de requerimientos
 # =========================
 def _orden_requerimientos(lista_dfs):
-    """Devuelve lista de (ID, Requerimiento) en el orden original del archivo fuente."""
-    df_ref = lista_dfs[0].sort_values("Fila")
-    pares = list(zip(df_ref["ID"].tolist(), df_ref["Requerimiento"].tolist()))
+    """Devuelve lista de (ID, Requerimiento) en el orden original del archivo fuente.
+    Usa todos los proveedores para no perder filas y ordena por Fila (entero)
+    para evitar el orden lexicográfico de los IDs como strings."""
+    df_all = pd.concat(lista_dfs).sort_values("Fila")
+    pares = list(zip(df_all["ID"].tolist(), df_all["Requerimiento"].tolist()))
     return list(dict.fromkeys(pares))
 
 
