@@ -502,26 +502,24 @@ def analizar_hoja_ans_sla(wb, proveedor):
 
 
 # =========================
-# INFORMACIÓN DE LA SOLUCIÓN — Localizacion
+# INFORMACIÓN DE LA SOLUCIÓN — Diferenciadores tecnicos
 # =========================
 def analizar_hoja_info_solucion(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor", "ID", "Requerimiento", "Respuesta"])
+        return pd.DataFrame(columns=["Proveedor", "Requerimiento", "Respuesta"])
     ws = wb[hoja_nombre]
-    FILAS = [36, 37, 38]
+    FILAS = [21]
     data = []
     for r in FILAS:
-        id_val  = ws.cell(r, 2).value
-        req_val = ws.cell(r, 3).value
-        res_val = ws.cell(r, 4).value
+        req_val = ws.cell(r, 2).value
+        res_val = ws.cell(r, 3).value
         data.append({
             "Proveedor":     proveedor,
-            "ID":            str(id_val).strip()  if id_val  is not None else "",
             "Requerimiento": str(req_val).strip() if req_val is not None else "",
             "Respuesta":     str(res_val).strip() if res_val is not None else "",
         })
-    return pd.DataFrame(data)[["Proveedor", "ID", "Requerimiento", "Respuesta"]]
+    return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
 
 
 # =========================
@@ -530,44 +528,40 @@ def analizar_hoja_info_solucion(wb, proveedor):
 def analizar_hoja_evolucion(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor", "ID", "Requerimiento", "Respuesta"])
+        return pd.DataFrame(columns=["Proveedor", "Requerimiento", "Respuesta"])
     ws = wb[hoja_nombre]
-    FILAS = [10, 11, 12, 13, 29, 31]
+    FILAS = [28]
     data = []
     for r in FILAS:
-        id_val  = ws.cell(r, 2).value
-        req_val = ws.cell(r, 3).value
-        res_val = ws.cell(r, 4).value
+        req_val = ws.cell(r, 2).value
+        res_val = ws.cell(r, 3).value
         data.append({
             "Proveedor":     proveedor,
-            "ID":            str(id_val).strip()  if id_val  is not None else "",
             "Requerimiento": str(req_val).strip() if req_val is not None else "",
             "Respuesta":     str(res_val).strip() if res_val is not None else "",
         })
-    return pd.DataFrame(data)[["Proveedor", "ID", "Requerimiento", "Respuesta"]]
+    return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
 
 
 # =========================
-# INFORMACIÓN DE LA SOLUCIÓN — Ecosistema
+# INFORMACIÓN DE LA SOLUCIÓN — red de partners, mecanismos de soporte y mantenimiento
 # =========================
 def analizar_hoja_ecosistema(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor", "ID", "Requerimiento", "Respuesta"])
+        return pd.DataFrame(columns=["Proveedor", "Requerimiento", "Respuesta"])
     ws = wb[hoja_nombre]
-    FILAS = [32, 33, 34, 35]
+    FILAS = [23,27]
     data = []
     for r in FILAS:
-        id_val  = ws.cell(r, 2).value
-        req_val = ws.cell(r, 3).value
-        res_val = ws.cell(r, 4).value
+        req_val = ws.cell(r, 2).value
+        res_val = ws.cell(r, 3).value
         data.append({
             "Proveedor":     proveedor,
-            "ID":            str(id_val).strip()  if id_val  is not None else "",
             "Requerimiento": str(req_val).strip() if req_val is not None else "",
             "Respuesta":     str(res_val).strip() if res_val is not None else "",
         })
-    return pd.DataFrame(data)[["Proveedor", "ID", "Requerimiento", "Respuesta"]]
+    return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
 
 
 # =========================
@@ -1688,8 +1682,8 @@ if st.session_state["archivos_cargados"]:
     # ---- SOLIDEZ DEL FABRICANTE ----
     st.subheader("Solidez del fabricante")
     st.info(
-        "La información consolidada de experiencia, localización, evolución, ecosistema y "
-        "capacidad de soporte de la solución se encuentran en el reporte final."
+        "La información consolidada de experiencia, diferenciadores técnicos, red de partners, mecanismos de soporte, mantenimiento, centors de I+D, comunidades colaborativas y "
+        "ruta de evolución de la solución se encuentran en el reporte final."
     )
 
     # ---- CALIDAD DEL PROPONENTE ----
@@ -1925,15 +1919,15 @@ if st.session_state["archivos_cargados"]:
 
         if data_info_solucion:
             df_info_sol_export = pd.concat(data_info_solucion, ignore_index=True)
-            _safe_to_excel(df_info_sol_export, writer, "Localizacion")
+            _safe_to_excel(df_info_sol_export, writer, "Diferenciadores técnicos")
 
         if data_evolucion:
             df_evol_export = pd.concat(data_evolucion, ignore_index=True)
-            _safe_to_excel(df_evol_export, writer, "Evolucion")
+            _safe_to_excel(df_evol_export, writer, "Ruta evolucion")
 
         if data_red_partners:
             df_red_export = pd.concat(data_red_partners, ignore_index=True)
-            _safe_to_excel(df_red_export, writer, "Ecosistema")
+            _safe_to_excel(df_red_export, writer, "Red de partners")
 
         if data_alcance_servicios_raw:
             df_alc_raw_export = pd.concat(data_alcance_servicios_raw, ignore_index=True)
