@@ -1776,7 +1776,7 @@ if st.session_state["archivos_cargados"]:
             "dl_alcance_servicios"
         )
     else:
-        st.info("No se encontraron datos de alcance de servicios (hoja '6.').")
+        st.info("No se encontraron datos de alcance de servicios (hoja '7.').")
 
     st.markdown("#### Metodología Implementación")
     st.caption(
