@@ -112,12 +112,12 @@ def analizar_hoja(ws, pesos_f, peso_col_f, peso_col_g):
     return round(cumplimiento, 2), df
 
 
-def analizar_hoja_k(ws, pesos_k):
+def analizar_hoja_k(ws, pesos_k, col_requerimiento=5):
     data = []
     for r in detectar_filas(ws):
         resp_k = leer_respuesta(ws, r, COL_RESPUESTA_K, VALID_RESPUESTAS_K)
         id_req = ws.cell(r, 1).value
-        requerimiento = ws.cell(r, 5).value
+        requerimiento = ws.cell(r, col_requerimiento).value
         peso_k = pesos_k.get(resp_k, 0.0)
         data.append({
             "Hoja": ws.title,
@@ -140,7 +140,7 @@ def analizar_hoja_nf(ws, peso_col_d, peso_col_e):
         resp_d = leer_respuesta(ws, r, COL_RESPUESTA_NF_D, VALID_RESPUESTAS_NF_D)
         resp_e = leer_respuesta(ws, r, COL_RESPUESTA_NF_E, VALID_RESPUESTAS_NF_E)
         id_req = ws.cell(r, 1).value
-        requerimiento = ws.cell(r, 5).value
+        requerimiento = ws.cell(r, 3).value
         peso_d = peso_col_d if resp_d == "SI" else 0.0
         peso_e = peso_col_e if resp_e == "SI" else 0.0
         data.append({
@@ -185,7 +185,7 @@ def analizar_archivo(path, pesos_f, peso_col_f, peso_col_g, pesos_k):
         if cumplimiento is not None:
             resultados_nf[h] = cumplimiento
             detalles_nf[h] = detalle_df
-        calidad, detalle_k_df = analizar_hoja_k(ws, pesos_k)
+        calidad, detalle_k_df = analizar_hoja_k(ws, pesos_k, col_requerimiento=3)
         if calidad is not None:
             resultados_k_nf[h] = calidad
             detalles_k_nf[h] = detalle_k_df
