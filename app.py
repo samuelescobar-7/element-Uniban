@@ -32,7 +32,11 @@ VALID_RESPUESTAS_G = {"SI", "NO"}
 VALID_RESPUESTAS_K = {"COMPLETA", "CASI COMPLETA", "PARCIALMENTE COMPLETA", "INCOMPLETA", "TOTALMENTE INCOMPLETA"}
 
 HOJAS_EXCLUIDAS = {"1.31", "1.32", "1.33"}
-
+# Columnas no funcional
+COL_RESPUESTA_NF_D = 4  # cubrimiento SI/NO
+COL_RESPUESTA_NF_E = 5  # inclusión SI/NO
+VALID_RESPUESTAS_NF_D = {"SI", "NO"}
+VALID_RESPUESTAS_NF_E = {"SI", "NO"}
 
 # =========================
 # FUNCIONES
@@ -130,7 +134,32 @@ def analizar_hoja_k(ws, pesos_k):
         return 0.0, df
     calidad = (df["Peso_K"].mean() / maximo_posible) * 100
     return round(calidad, 2), df
-
+def analizar_hoja_nf(ws, peso_col_d, peso_col_e):
+    data = []
+    for r in detectar_filas(ws):
+        resp_d = leer_respuesta(ws, r, COL_RESPUESTA_NF_D, VALID_RESPUESTAS_NF_D)
+        resp_e = leer_respuesta(ws, r, COL_RESPUESTA_NF_E, VALID_RESPUESTAS_NF_E)
+        id_req = ws.cell(r, 1).value
+        requerimiento = ws.cell(r, 5).value
+        peso_d = peso_col_d if resp_d == "SI" else 0.0
+        peso_e = peso_col_e if resp_e == "SI" else 0.0
+        data.append({
+            "Hoja": ws.title,
+            "Fila": r,
+            "ID": str(id_req).strip() if id_req is not None else "",
+            "Requerimiento": requerimiento,
+            "Peso_F": peso_d,
+            "Peso_G": peso_e,
+            "Peso_Total": peso_d + peso_e
+        })
+    df = pd.DataFrame(data)
+    if df.empty:
+        return None, None
+    maximo_posible = peso_col_d + peso_col_e
+    if maximo_posible == 0:
+        return 0.0, df
+    cumplimiento = (df["Peso_Total"].mean() / maximo_posible) * 100
+    return round(cumplimiento, 2), df
 
 def analizar_archivo(path, pesos_f, peso_col_f, peso_col_g, pesos_k):
     wb = openpyxl.load_workbook(path, data_only=True)
@@ -152,7 +181,7 @@ def analizar_archivo(path, pesos_f, peso_col_f, peso_col_g, pesos_k):
     resultados_nf, detalles_nf, resultados_k_nf, detalles_k_nf = {}, {}, {}, {}
     for h in hojas_nofunc:
         ws = wb[h]
-        cumplimiento, detalle_df = analizar_hoja(ws, pesos_f, peso_col_f, peso_col_g)
+        cumplimiento, detalle_df = analizar_hoja_nf(ws, peso_col_f, peso_col_g)
         if cumplimiento is not None:
             resultados_nf[h] = cumplimiento
             detalles_nf[h] = detalle_df
