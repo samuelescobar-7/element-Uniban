@@ -86,7 +86,7 @@ def analizar_hoja(ws, pesos_f, peso_col_f, peso_col_g):
         resp_f = leer_respuesta(ws, r, COL_RESPUESTA_F, VALID_RESPUESTAS_F)
         resp_g = leer_respuesta(ws, r, COL_RESPUESTA_G, VALID_RESPUESTAS_G)
         id_req = ws.cell(r, 1).value
-        requerimiento = ws.cell(r, 4).value
+        requerimiento = ws.cell(r, 5).value
         peso_f = pesos_f.get(resp_f, 0.0)
         peso_g = peso_col_g if resp_g == "SI" else 0.0
         data.append({
@@ -113,7 +113,7 @@ def analizar_hoja_k(ws, pesos_k):
     for r in detectar_filas(ws):
         resp_k = leer_respuesta(ws, r, COL_RESPUESTA_K, VALID_RESPUESTAS_K)
         id_req = ws.cell(r, 1).value
-        requerimiento = ws.cell(r, 4).value
+        requerimiento = ws.cell(r, 5).value
         peso_k = pesos_k.get(resp_k, 0.0)
         data.append({
             "Hoja": ws.title,
