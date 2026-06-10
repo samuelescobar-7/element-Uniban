@@ -134,6 +134,8 @@ def analizar_hoja_k(ws, pesos_k, col_requerimiento=5):
         return 0.0, df
     calidad = (df["Peso_K"].mean() / maximo_posible) * 100
     return round(calidad, 2), df
+
+
 def analizar_hoja_nf(ws, peso_col_d, peso_col_e):
     data = []
     for r in detectar_filas(ws):
@@ -160,6 +162,7 @@ def analizar_hoja_nf(ws, peso_col_d, peso_col_e):
         return 0.0, df
     cumplimiento = (df["Peso_Total"].mean() / maximo_posible) * 100
     return round(cumplimiento, 2), df
+
 
 def analizar_archivo(path, pesos_f, peso_col_f, peso_col_g, pesos_k):
     wb = openpyxl.load_workbook(path, data_only=True)
@@ -192,30 +195,6 @@ def analizar_archivo(path, pesos_f, peso_col_f, peso_col_g, pesos_k):
 
     return (resultados, detalles, resultados_k, detalles_k,
             resultados_nf, detalles_nf, resultados_k_nf, detalles_k_nf)
-
-
-def analizar_hoja_experiencia(wb, proveedor):
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("3.")), None)
-    if hoja_nombre is None:
-        return pd.DataFrame([{"Sector/Industria": "", "País": "", "Proveedor": proveedor}])
-    ws = wb[hoja_nombre]
-    data = []
-    for r in range(11, ws.max_row + 1):
-        num = ws.cell(r, 2).value
-        if num is None:
-            continue
-        sector = ws.cell(r, 4).value
-        pais   = ws.cell(r, 5).value
-        if sector is None and pais is None:
-            continue
-        data.append({
-            "Sector/Industria": str(sector).strip() if sector else "",
-            "País": str(pais).strip() if pais else "",
-            "Proveedor": proveedor
-        })
-    if not data:
-        return pd.DataFrame([{"Sector/Industria": "", "País": "", "Proveedor": proveedor}])
-    return pd.DataFrame(data)
 
 
 def analizar_hoja_experiencia_raw(wb, proveedor):
@@ -1068,22 +1047,18 @@ if st.sidebar.button("Reiniciar análisis"):
     st.rerun()
 
 with st.sidebar:
-    # ── Defaults ──────────────────────────────────────────────────────────
     st.session_state.setdefault("ni_peso_col_f", 100)
     st.session_state.setdefault("ni_peso_col_g", 100)
-    # Respuestas columna F (nuevas)
     st.session_state.setdefault("ni_si_estandar_pct",        100)
     st.session_state.setdefault("ni_si_componente_pct",       75)
     st.session_state.setdefault("ni_des_pct",                 50)
     st.session_state.setdefault("ni_ter_pct",                 50)
     st.session_state.setdefault("ni_no_pct",                   0)
-    # Calidad K
     st.session_state.setdefault("ni_k_completa",             100)
     st.session_state.setdefault("ni_k_casi_completa",         75)
     st.session_state.setdefault("ni_k_parcialmente_completa", 50)
     st.session_state.setdefault("ni_k_incompleta",            25)
     st.session_state.setdefault("ni_k_totalmente_incompleta",  0)
-    # Pesos totales
     st.session_state.setdefault("ni_peso_total_cum",  100)
     st.session_state.setdefault("ni_peso_total_cal",  100)
     st.session_state.setdefault("ni_peso_alcance",    100)
@@ -1138,7 +1113,6 @@ with st.sidebar:
         key="ni_no_pct"
     )
 
-    # Keys coinciden EXACTAMENTE con los valores normalizados (.upper()) de VALID_RESPUESTAS_F
     pesos_f = {
         "SÍ (ESTÁNDAR ERP)":        (_si_estandar_pct   / 100) * peso_col_f,
         "SI (COMPONENTE ADICIONAL)": (_si_componente_pct / 100) * peso_col_f,
@@ -1237,7 +1211,6 @@ if archivos and not st.session_state["archivos_cargados"]:
     data_nf, data_k_nf = [], []
     detalles_globales, detalles_globales_k = {}, {}
     detalles_globales_nf, detalles_globales_k_nf = {}, {}
-    data_experiencia = []
     data_experiencia_raw = []
     data_experiencia_oferente = []
     data_experiencia_oferente_raw = []
@@ -1301,9 +1274,6 @@ if archivos and not st.session_state["archivos_cargados"]:
             detalles_globales_k_nf.setdefault(hoja, []).append(df_)
 
         wb_exp = openpyxl.load_workbook(path, data_only=True)
-        df_exp = analizar_hoja_experiencia(wb_exp, proveedor)
-        if df_exp is not None:
-            data_experiencia.append(df_exp)
 
         df_exp_raw = analizar_hoja_experiencia_raw(wb_exp, proveedor)
         if df_exp_raw is not None and not df_exp_raw.empty:
@@ -1376,7 +1346,6 @@ if archivos and not st.session_state["archivos_cargados"]:
         "detalles_globales_k": detalles_globales_k,
         "detalles_globales_nf": detalles_globales_nf,
         "detalles_globales_k_nf": detalles_globales_k_nf,
-        "data_experiencia": data_experiencia,
         "data_experiencia_raw": data_experiencia_raw,
         "data_experiencia_oferente": data_experiencia_oferente,
         "data_experiencia_oferente_raw": data_experiencia_oferente_raw,
@@ -1395,7 +1364,6 @@ if archivos and not st.session_state["archivos_cargados"]:
         "nombres_proveedores": nombres_proveedores,
         "param_peso_col_f_raw": peso_col_f_pct,
         "param_peso_col_g_raw": peso_col_g_pct,
-        # Labels legibles para el reporte (no normalizados)
         "param_pesos_f_raw": {
             "SÍ (Estándar ERP)":        _si_estandar_pct,
             "Si (Componente Adicional)": _si_componente_pct,
@@ -1549,7 +1517,6 @@ if st.session_state["archivos_cargados"]:
     detalles_globales_k    = st.session_state["detalles_globales_k"]
     detalles_globales_nf   = st.session_state["detalles_globales_nf"]
     detalles_globales_k_nf = st.session_state["detalles_globales_k_nf"]
-    data_experiencia          = st.session_state["data_experiencia"]
     data_experiencia_raw      = st.session_state.get("data_experiencia_raw", [])
     data_experiencia_oferente = st.session_state.get("data_experiencia_oferente", [])
     data_experiencia_oferente_raw = st.session_state.get("data_experiencia_oferente_raw", [])
@@ -1724,17 +1691,6 @@ if st.session_state["archivos_cargados"]:
         "La información consolidada de experiencia, localización, evolución, ecosistema y "
         "capacidad de soporte de la solución se encuentran en el reporte final."
     )
-    pivot_sector = pd.DataFrame()
-    if data_experiencia:
-        df_exp_all = pd.concat(data_experiencia, ignore_index=True)
-        todos_proveedores = list(df_exp_all["Proveedor"].unique())
-        pivot_sector = (
-            df_exp_all[df_exp_all["Sector/Industria"] != ""]
-            .groupby(["Sector/Industria", "Proveedor"]).size()
-            .unstack(fill_value=0)
-            .reindex(columns=todos_proveedores, fill_value=0)
-            .reset_index()
-        )
 
     # ---- CALIDAD DEL PROPONENTE ----
     st.subheader("Calidad del proponente")
@@ -1966,9 +1922,6 @@ if st.session_state["archivos_cargados"]:
         if data_experiencia_raw:
             df_exp_raw_export = pd.concat(data_experiencia_raw, ignore_index=True)
             _safe_to_excel(df_exp_raw_export, writer, "Exp - Fabricante completa")
-
-        if data_experiencia:
-            _safe_to_excel(pivot_sector, writer, "Exp - Por sector")
 
         if data_info_solucion:
             df_info_sol_export = pd.concat(data_info_solucion, ignore_index=True)
