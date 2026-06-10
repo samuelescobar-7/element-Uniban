@@ -584,6 +584,27 @@ def analizar_hoja_centros_id(wb, proveedor):
     return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
 
 # =========================
+# INFORMACIÓN DE LA SOLUCIÓN — Comunidades colaborativas
+# =========================
+
+def analizar_hoja_comunidades(wb, proveedor):
+    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
+    if hoja_nombre is None:
+        return pd.DataFrame(columns=["Proveedor", "Requerimiento", "Respuesta"])
+    ws = wb[hoja_nombre]
+    FILAS = [25]
+    data = []
+    for r in FILAS:
+        req_val = ws.cell(r, 2).value
+        res_val = ws.cell(r, 3).value
+        data.append({
+            "Proveedor":     proveedor,
+            "Requerimiento": str(req_val).strip() if req_val is not None else "",
+            "Respuesta":     str(res_val).strip() if res_val is not None else "",
+        })
+    return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
+
+# =========================
 # ALCANCE DE SERVICIOS
 # =========================
 def analizar_hoja_alcance_servicios(wb, proveedor):
@@ -1235,6 +1256,7 @@ if archivos and not st.session_state["archivos_cargados"]:
     data_evolucion = []
     data_red_partners = []
     data_centros = []
+    data_comunidades = []
     data_equipo_implementador = []
     data_capacidades_nube = []
     data_soporte_manto = []
@@ -1332,6 +1354,10 @@ if archivos and not st.session_state["archivos_cargados"]:
         df_centros = analizar_hoja_centros_id(wb_exp, proveedor)
         if df_centros is not None and not df_centros.empty:
             data_centros.append(df_centros)
+        
+        df_comunidades = analizar_hoja_comunidades(wb_exp, proveedor)
+        if df_comunidades is not None and not df_comunidades.empty:
+            data_comunidades.append(df_comunidades)
 
         df_equipo = analizar_hoja_equipo_implementador(wb_exp, proveedor)
         if df_equipo is not None and not df_equipo.empty:
@@ -1375,6 +1401,7 @@ if archivos and not st.session_state["archivos_cargados"]:
         "data_evolucion": data_evolucion,
         "data_red_partners": data_red_partners,
         "data_centros": data_centros,
+        "data_comunidades": data_comunidades,
         "data_equipo_implementador": data_equipo_implementador,
         "data_capacidades_nube": data_capacidades_nube,
         "data_soporte_manto": data_soporte_manto,
@@ -1546,6 +1573,7 @@ if st.session_state["archivos_cargados"]:
     data_evolucion            = st.session_state.get("data_evolucion", [])
     data_red_partners         = st.session_state.get("data_red_partners", [])
     data_centros              = st.session_state.get("data_centros", [])
+    data_comunidades          = st.session_state.get("data_comunidades", [])
     data_equipo_implementador = st.session_state.get("data_equipo_implementador", [])
     data_capacidades_nube     = st.session_state.get("data_capacidades_nube", [])
     data_soporte_manto        = st.session_state.get("data_soporte_manto", [])
@@ -1958,6 +1986,11 @@ if st.session_state["archivos_cargados"]:
         if data_centros:
             df_centros_export = pd.concat(data_centros, ignore_index=True)
             _safe_to_excel(df_centros_export, writer, "Centros de (I+D)")    
+
+
+        if data_comunidades:
+            df_comunidades_export = pd.concat(data_comunidades, ignore_index=True)
+            _safe_to_excel(df_comunidades_export, writer, "Comunidades colaborativas")
 
         if data_alcance_servicios_raw:
             df_alc_raw_export = pd.concat(data_alcance_servicios_raw, ignore_index=True)
