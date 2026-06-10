@@ -220,40 +220,104 @@ def analizar_hoja_experiencia(wb, proveedor):
 
 def analizar_hoja_experiencia_raw(wb, proveedor):
     COLUMNAS = [
-        "Nombre del contratante (Cliente)",
-        "Sector/Industria",
-        "País",
-        "Procesos/componentes implementados y funcionando en la actualidad",
-        "Versión de la Solución",
+        "Proveedor",
+        "Negocio",
+        "Nombre de la empresa (Cliente)",
+        "País donde se realizó la implementación",
         "Nombre del contacto",
         "E-mail del contacto",
-        "Teléfono del contacto",
-        "Estado de la implementación",
+        "Página Web",
+        "Nombre del Producto Instalado y Funcionando",
     ]
-    COL_INICIO = 3
-    COL_FIN = 11
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("3.")), None)
     if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
+        return pd.DataFrame(columns=COLUMNAS)
 
     ws = wb[hoja_nombre]
+
+    # Resolver celdas mergeadas: mapear cada celda al valor de la superior-izquierda
+    merged_values = {}
+    for merge_range in ws.merged_cells.ranges:
+        top_left = ws.cell(merge_range.min_row, merge_range.min_col).value
+        for row in range(merge_range.min_row, merge_range.max_row + 1):
+            for col in range(merge_range.min_col, merge_range.max_col + 1):
+                merged_values[(row, col)] = top_left
+
+    def get_cell_value(r, c):
+        if (r, c) in merged_values:
+            return merged_values[(r, c)]
+        return ws.cell(r, c).value
+
+    ENCABEZADOS = {
+        "nombre de la empresa", "país donde", "nombre del contacto",
+        "e-mail", "página web", "nombre del producto", "#"
+    }
+
+    filas_procesadas = set()
     data = []
-    for r in range(11, ws.max_row + 1):
-        num = ws.cell(r, 2).value
-        if num is None:
-            continue
-        valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
-        if all(v is None for v in valores):
-            continue
-        fila = {"Proveedor": proveedor}
-        for col_name, val in zip(COLUMNAS, valores):
-            fila[col_name] = str(val).strip() if val is not None else ""
-        data.append(fila)
+    negocio_actual = ""
+
+    for r in range(1, ws.max_row + 1):
+        val_a = ws.cell(r, 1).value  # leer directo, sin resolver merge
+
+        es_numero = False
+        if val_a is not None:
+            try:
+                int(str(val_a).strip())
+                es_numero = True
+            except ValueError:
+                pass
+
+        if es_numero:
+            if r in filas_procesadas:
+                continue
+            filas_procesadas.add(r)
+
+            # Verificar que al menos una celda de datos (cols 2-7) tenga contenido real
+            valores = [ws.cell(r, c).value for c in range(2, 8)]
+            if all(v is None or str(v).strip() == "" for v in valores):
+                continue
+
+            fila = {
+                "Proveedor": proveedor,
+                "Negocio": negocio_actual,
+                "Nombre de la empresa (Cliente)":              str(get_cell_value(r, 2) or "").strip(),
+                "País donde se realizó la implementación":     str(get_cell_value(r, 3) or "").strip(),
+                "Nombre del contacto":                         str(get_cell_value(r, 4) or "").strip(),
+                "E-mail del contacto":                         str(get_cell_value(r, 5) or "").strip(),
+                "Página Web":                                  str(get_cell_value(r, 6) or "").strip(),
+                "Nombre del Producto Instalado y Funcionando": str(get_cell_value(r, 7) or "").strip(),
+            }
+            data.append(fila)
+
+        else:
+            # Buscar texto de título en cualquier columna de la fila
+            texto_fila = ""
+            for c in range(1, ws.max_column + 1):
+                v = get_cell_value(r, c)
+                if v is not None and str(v).strip():
+                    texto_fila = str(v).strip()
+                    break
+
+            if not texto_fila:
+                continue
+
+            texto_lower = texto_fila.lower()
+
+            # Descartar encabezados de columna
+            if any(enc in texto_lower for enc in ENCABEZADOS):
+                continue
+
+            # Descartar textos muy cortos
+            if len(texto_fila) < 5:
+                continue
+
+            negocio_actual = texto_fila
 
     if not data:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-    return pd.DataFrame(data)[["Proveedor"] + COLUMNAS]
+        return pd.DataFrame(columns=COLUMNAS)
+    return pd.DataFrame(data)[COLUMNAS]
 
 
 def analizar_hoja_experiencia_oferente(wb, proveedor):
