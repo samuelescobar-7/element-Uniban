@@ -20,7 +20,6 @@ COL_RESPUESTA_F = 6
 COL_RESPUESTA_G = 7
 COL_RESPUESTA_K = 11
 
-# Valores en MAYÚSCULAS — coinciden con normalizar() que hace .upper()
 VALID_RESPUESTAS_F = {
     "SÍ (ESTÁNDAR ERP)",
     "SI (COMPONENTE ADICIONAL)",
@@ -32,11 +31,11 @@ VALID_RESPUESTAS_G = {"SI", "NO"}
 VALID_RESPUESTAS_K = {"COMPLETA", "CASI COMPLETA", "PARCIALMENTE COMPLETA", "INCOMPLETA", "TOTALMENTE INCOMPLETA"}
 
 HOJAS_EXCLUIDAS = {"1.31", "1.32", "1.33"}
-# Columnas no funcional
-COL_RESPUESTA_NF_D = 4  # cubrimiento SI/NO
-COL_RESPUESTA_NF_E = 5  # inclusión SI/NO
+COL_RESPUESTA_NF_D = 4
+COL_RESPUESTA_NF_E = 5
 VALID_RESPUESTAS_NF_D = {"SI", "NO"}
 VALID_RESPUESTAS_NF_E = {"SI", "NO"}
+
 
 # =========================
 # FUNCIONES
@@ -215,7 +214,6 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
 
     ws = wb[hoja_nombre]
 
-    # Resolver celdas mergeadas: mapear cada celda al valor de la superior-izquierda
     merged_values = {}
     for merge_range in ws.merged_cells.ranges:
         top_left = ws.cell(merge_range.min_row, merge_range.min_col).value
@@ -238,7 +236,7 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
     negocio_actual = ""
 
     for r in range(1, ws.max_row + 1):
-        val_a = ws.cell(r, 1).value  # leer directo, sin resolver merge
+        val_a = ws.cell(r, 1).value
 
         es_numero = False
         if val_a is not None:
@@ -253,7 +251,6 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
                 continue
             filas_procesadas.add(r)
 
-            # Verificar que al menos una celda de datos (cols 2-7) tenga contenido real
             valores = [ws.cell(r, c).value for c in range(2, 8)]
             if all(v is None or str(v).strip() == "" for v in valores):
                 continue
@@ -271,7 +268,6 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
             data.append(fila)
 
         else:
-            # Buscar texto de título en cualquier columna de la fila
             texto_fila = ""
             for c in range(1, ws.max_column + 1):
                 v = get_cell_value(r, c)
@@ -284,11 +280,9 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
 
             texto_lower = texto_fila.lower()
 
-            # Descartar encabezados de columna
             if any(enc in texto_lower for enc in ENCABEZADOS):
                 continue
 
-            # Descartar textos muy cortos
             if len(texto_fila) < 5:
                 continue
 
@@ -301,15 +295,6 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
 
 # =========================
 # EXPERIENCIA OFERENTE — resumen pivot por industria
-# Nueva estructura hoja "5.": fila inicio 9, cols B(2)–I(9)
-#   B(2)  Nombre del contratante (Cliente)
-#   C(3)  País donde se realizó la implementación
-#   D(4)  Nombre del contacto
-#   E(5)  E-mail del contacto
-#   F(6)  Página Web
-#   G(7)  Tipo de Industria
-#   H(8)  Procesos implementados
-#   I(9)  Describa las integraciones del sistema core (ERP) y las soluciones avanzadas
 # =========================
 def analizar_hoja_experiencia_oferente(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("5.")), None)
@@ -318,11 +303,11 @@ def analizar_hoja_experiencia_oferente(wb, proveedor):
     ws = wb[hoja_nombre]
     data = []
     for r in range(9, ws.max_row + 1):
-        num = ws.cell(r, 2).value          # col B — Nombre del contratante (Cliente)
+        num = ws.cell(r, 2).value
         if num is None:
             continue
-        sector = ws.cell(r, 7).value       # col G — Tipo de Industria
-        pais   = ws.cell(r, 3).value       # col C — País donde se realizó la implementación
+        sector = ws.cell(r, 7).value
+        pais   = ws.cell(r, 3).value
         if sector is None and pais is None:
             continue
         data.append({
@@ -337,7 +322,6 @@ def analizar_hoja_experiencia_oferente(wb, proveedor):
 
 # =========================
 # EXPERIENCIA OFERENTE — detalle completo (raw)
-# Nueva estructura hoja "5.": fila inicio 9, cols B(2)–I(9)
 # =========================
 def analizar_hoja_experiencia_oferente_raw(wb, proveedor):
     COLUMNAS = [
@@ -350,8 +334,8 @@ def analizar_hoja_experiencia_oferente_raw(wb, proveedor):
         "Procesos implementados",
         "Describa las integraciones del sistema core (ERP) y las soluciones avanzadas",
     ]
-    COL_INICIO = 2   # columna B
-    COL_FIN    = 9   # columna I
+    COL_INICIO = 2
+    COL_FIN    = 9
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("5.")), None)
     if hoja_nombre is None:
@@ -360,147 +344,6 @@ def analizar_hoja_experiencia_oferente_raw(wb, proveedor):
     ws = wb[hoja_nombre]
     data = []
     for r in range(9, ws.max_row + 1):
-        valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
-        if all(v is None for v in valores):
-            continue
-        fila = {"Proveedor": proveedor}
-        for col_name, val in zip(COLUMNAS, valores):
-            fila[col_name] = str(val).strip() if val is not None else ""
-        data.append(fila)
-
-    if not data:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-    return pd.DataFrame(data)[["Proveedor"] + COLUMNAS]
-
-
-# =========================
-# EQUIPO IMPLEMENTADOR
-# =========================
-def analizar_hoja_equipo_implementador(wb, proveedor):
-    COLUMNAS = [
-        "Rol a desempeñar",
-        "Tipo de recurso",
-        "Experiencia",
-        "Número de recursos propuestos",
-        "# de días dedicados al Proyecto",
-        "% de asignación presencial",
-        "Profesión, educación",
-        "Certificaciones de conocimiento expedidas por el fabricante",
-        "Certificaciones emitidas por clientes de proyectos trabajados",
-        "Fase en la que participa",
-        "Documento soporte",
-    ]
-    COL_INICIO = 2
-    COL_FIN    = 12
-
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("9.")), None)
-    if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-
-    ws = wb[hoja_nombre]
-    data = []
-    for r in range(10, ws.max_row + 1):
-        valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
-        if all(v is None for v in valores):
-            continue
-        fila = {"Proveedor": proveedor}
-        for col_name, val in zip(COLUMNAS, valores):
-            fila[col_name] = str(val).strip() if val is not None else ""
-        data.append(fila)
-
-    if not data:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-    return pd.DataFrame(data)[["Proveedor"] + COLUMNAS]
-
-
-# =========================
-# CAPACIDADES NUBE
-# =========================
-def analizar_hoja_capacidades_nube(wb, proveedor):
-    COLUMNAS = [
-        "Categoria",
-        "Variable a Declarar",
-        "Respuesta del oferente",
-        "Observaciones Adicionales del oferente",
-    ]
-    COL_INICIO = 2
-    COL_FIN    = 5
-
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("12.")), None)
-    if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-
-    ws = wb[hoja_nombre]
-    data = []
-    for r in range(10, ws.max_row + 1):
-        valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
-        if all(v is None for v in valores):
-            continue
-        fila = {"Proveedor": proveedor}
-        for col_name, val in zip(COLUMNAS, valores):
-            fila[col_name] = str(val).strip() if val is not None else ""
-        data.append(fila)
-
-    if not data:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-    return pd.DataFrame(data)[["Proveedor"] + COLUMNAS]
-
-
-# =========================
-# SOPORTE Y MANTO
-# =========================
-def analizar_hoja_soporte_manto(wb, proveedor):
-    COLUMNAS = [
-        "Categoría de servicio",
-        "Descripción del servicio incluido",
-        "Alcance/cobertura",
-        "Incluido en suscripción (SI/NO)",
-        "Observaciones",
-    ]
-    COL_INICIO = 2
-    COL_FIN    = 6
-
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("13.")), None)
-    if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-
-    ws = wb[hoja_nombre]
-    data = []
-    for r in range(9, 25):
-        valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
-        if all(v is None for v in valores):
-            continue
-        fila = {"Proveedor": proveedor}
-        for col_name, val in zip(COLUMNAS, valores):
-            fila[col_name] = str(val).strip() if val is not None else ""
-        data.append(fila)
-
-    if not data:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-    return pd.DataFrame(data)[["Proveedor"] + COLUMNAS]
-
-
-# =========================
-# ANS / SLA
-# =========================
-def analizar_hoja_ans_sla(wb, proveedor):
-    COLUMNAS = [
-        "Nivel de Criticidad",
-        "Tiempo Máximo de Respuesta",
-        "Tiempo Máximo de Resolución",
-        "Horario de Cobertura",
-        "% Descuento por Incumplimiento",
-    ]
-    COL_INICIO = 2
-    COL_FIN    = 6
-
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("13.")), None)
-    if hoja_nombre is None:
-        return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
-
-    ws = wb[hoja_nombre]
-    data = []
-    for r in range(28, 32):
         valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
         if all(v is None for v in valores):
             continue
@@ -564,7 +407,7 @@ def analizar_hoja_ecosistema(wb, proveedor):
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor", "Requerimiento", "Respuesta"])
     ws = wb[hoja_nombre]
-    FILAS = [23,27]
+    FILAS = [23, 27]
     data = []
     for r in FILAS:
         req_val = ws.cell(r, 2).value
@@ -575,6 +418,7 @@ def analizar_hoja_ecosistema(wb, proveedor):
             "Respuesta":     str(res_val).strip() if res_val is not None else "",
         })
     return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
+
 
 # =========================
 # INFORMACIÓN DE LA SOLUCIÓN — Centros de (I+D)
@@ -596,10 +440,10 @@ def analizar_hoja_centros_id(wb, proveedor):
         })
     return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
 
+
 # =========================
 # INFORMACIÓN DE LA SOLUCIÓN — Comunidades colaborativas
 # =========================
-
 def analizar_hoja_comunidades(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("2.")), None)
     if hoja_nombre is None:
@@ -617,10 +461,9 @@ def analizar_hoja_comunidades(wb, proveedor):
         })
     return pd.DataFrame(data)[["Proveedor", "Requerimiento", "Respuesta"]]
 
+
 # =========================
 # ALCANCE DE SERVICIOS
-# — CAMBIO: ahora busca la hoja que empieza con "7." (antes "6.")
-#   Fila inicio: 6 | Col B (2) = Servicio | Col C (3) = SI/NO | Col E (5) = Calidad
 # =========================
 def analizar_hoja_alcance_servicios(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("7.")), None)
@@ -662,7 +505,6 @@ def analizar_hoja_alcance_servicios_raw(wb, proveedor):
     COL_INICIO = 2
     COL_FIN = 5
 
-    # CAMBIO: ahora busca la hoja que empieza con "7." (antes "6.")
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("7.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
@@ -1273,10 +1115,6 @@ if archivos and not st.session_state["archivos_cargados"]:
     data_red_partners = []
     data_centros = []
     data_comunidades = []
-    data_equipo_implementador = []
-    data_capacidades_nube = []
-    data_soporte_manto = []
-    data_ans_sla = []
     metadata_archivos = []
     nombres_proveedores = []
 
@@ -1370,26 +1208,10 @@ if archivos and not st.session_state["archivos_cargados"]:
         df_centros = analizar_hoja_centros_id(wb_exp, proveedor)
         if df_centros is not None and not df_centros.empty:
             data_centros.append(df_centros)
-        
+
         df_comunidades = analizar_hoja_comunidades(wb_exp, proveedor)
         if df_comunidades is not None and not df_comunidades.empty:
             data_comunidades.append(df_comunidades)
-
-        df_equipo = analizar_hoja_equipo_implementador(wb_exp, proveedor)
-        if df_equipo is not None and not df_equipo.empty:
-            data_equipo_implementador.append(df_equipo)
-
-        df_cap_nube = analizar_hoja_capacidades_nube(wb_exp, proveedor)
-        if df_cap_nube is not None and not df_cap_nube.empty:
-            data_capacidades_nube.append(df_cap_nube)
-
-        df_soporte = analizar_hoja_soporte_manto(wb_exp, proveedor)
-        if df_soporte is not None and not df_soporte.empty:
-            data_soporte_manto.append(df_soporte)
-
-        df_ans = analizar_hoja_ans_sla(wb_exp, proveedor)
-        if df_ans is not None and not df_ans.empty:
-            data_ans_sla.append(df_ans)
 
     df_final, df_total = construir_tablas_cumplimiento(data)
     df_final_k, df_total_k = construir_tablas_calidad(data_k) if data_k else (None, None)
@@ -1418,10 +1240,6 @@ if archivos and not st.session_state["archivos_cargados"]:
         "data_red_partners": data_red_partners,
         "data_centros": data_centros,
         "data_comunidades": data_comunidades,
-        "data_equipo_implementador": data_equipo_implementador,
-        "data_capacidades_nube": data_capacidades_nube,
-        "data_soporte_manto": data_soporte_manto,
-        "data_ans_sla": data_ans_sla,
         "metadata_archivos": metadata_archivos,
         "nombres_proveedores": nombres_proveedores,
         "param_peso_col_f_raw": peso_col_f_pct,
@@ -1590,10 +1408,6 @@ if st.session_state["archivos_cargados"]:
     data_red_partners         = st.session_state.get("data_red_partners", [])
     data_centros              = st.session_state.get("data_centros", [])
     data_comunidades          = st.session_state.get("data_comunidades", [])
-    data_equipo_implementador = st.session_state.get("data_equipo_implementador", [])
-    data_capacidades_nube     = st.session_state.get("data_capacidades_nube", [])
-    data_soporte_manto        = st.session_state.get("data_soporte_manto", [])
-    data_ans_sla              = st.session_state.get("data_ans_sla", [])
     metadata_archivos      = st.session_state.get("metadata_archivos", [])
     nombres_proveedores    = st.session_state.get("nombres_proveedores", [])
 
@@ -1752,7 +1566,7 @@ if st.session_state["archivos_cargados"]:
     # ---- SOLIDEZ DEL FABRICANTE ----
     st.subheader("Solidez del fabricante")
     st.info(
-        "La información consolidada de experiencia, diferenciadores técnicos, red de partners, mecanismos de soporte, mantenimiento, centors de I+D, comunidades colaborativas y "
+        "La información consolidada de experiencia, diferenciadores técnicos, red de partners, mecanismos de soporte, mantenimiento, centros de I+D, comunidades colaborativas y "
         "ruta de evolución de la solución se encuentran en el reporte final."
     )
 
@@ -1827,18 +1641,11 @@ if st.session_state["archivos_cargados"]:
             "dl_metodologia"
         )
     else:
-        st.info("No se encontraron datos de metodología (hoja '7.').")
+        st.info("No se encontraron datos de metodología (hoja '8.').")
 
     st.info(
-        "La información consolidada de experiencia del oferente y equipo implementador "
-        "se encuentran en el reporte final."
-    )
-
-    # ---- OTRAS ----
-    st.subheader("OTRAS")
-    st.info(
-        "La información consolidada de capacidades de nube, soporte y manto "
-        "se encuentran en el reporte final."
+        "La información consolidada de experiencia del oferente "
+        "se encuentra en el reporte final."
     )
 
     # ---- EXPORTAR EXCEL COMPLETO ----
@@ -1998,10 +1805,10 @@ if st.session_state["archivos_cargados"]:
         if data_red_partners:
             df_red_export = pd.concat(data_red_partners, ignore_index=True)
             _safe_to_excel(df_red_export, writer, "Red de partners")
-        
+
         if data_centros:
             df_centros_export = pd.concat(data_centros, ignore_index=True)
-            _safe_to_excel(df_centros_export, writer, "Centros de (I+D)")    
+            _safe_to_excel(df_centros_export, writer, "Centros de (I+D)")
 
         if data_comunidades:
             df_comunidades_export = pd.concat(data_comunidades, ignore_index=True)
@@ -2118,27 +1925,6 @@ if st.session_state["archivos_cargados"]:
                 df_exp_of_raw_export = pd.concat(data_experiencia_oferente_raw, ignore_index=True)
                 _safe_to_excel(df_exp_of_raw_export, writer, "Exp - Oferente completa")
             _safe_to_excel(_pivot_of, writer, "Exp - Oferente por sector")
-
-        if data_equipo_implementador:
-            df_equipo_export = pd.concat(data_equipo_implementador, ignore_index=True)
-            _safe_to_excel(df_equipo_export, writer, "Equipo Implementador")
-
-        if data_capacidades_nube:
-            df_cap_nube_export = pd.concat(data_capacidades_nube, ignore_index=True)
-            _safe_to_excel(df_cap_nube_export, writer, "Capacidades Nube")
-
-        if data_soporte_manto or data_ans_sla:
-            ws_sm = writer.book.create_sheet("Soporte y Manto")
-            fila_sm = 1
-            if data_soporte_manto:
-                df_soporte_export = pd.concat(data_soporte_manto, ignore_index=True)
-                fila_sm = _write_pivot_block(ws_sm, df_soporte_export, "Soporte y Manto", fila_sm)
-            if data_ans_sla:
-                df_ans_export = pd.concat(data_ans_sla, ignore_index=True)
-                fila_sm = _write_pivot_block(ws_sm, df_ans_export, "ACUERDOS DE NIVEL DE SERVICIO (ANS / SLA)", fila_sm)
-            for col in ws_sm.columns:
-                max_len = max((len(str(c.value)) for c in col if c.value is not None), default=0)
-                ws_sm.column_dimensions[col[0].column_letter].width = min(max_len + 4, 60)
 
         escribir_hoja_info_analisis(writer, bloques_info)
 
