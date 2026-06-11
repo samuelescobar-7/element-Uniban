@@ -606,9 +606,11 @@ def analizar_hoja_comunidades(wb, proveedor):
 
 # =========================
 # ALCANCE DE SERVICIOS
+# — CAMBIO: ahora busca la hoja que empieza con "7." (antes "6.")
+#   Fila inicio: 6 | Col B (2) = Servicio | Col C (3) = SI/NO | Col E (5) = Calidad
 # =========================
 def analizar_hoja_alcance_servicios(wb, proveedor):
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("6.")), None)
+    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("7.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Respuesta_C", "Respuesta_E", "Proveedor"])
     ws = wb[hoja_nombre]
@@ -647,7 +649,8 @@ def analizar_hoja_alcance_servicios_raw(wb, proveedor):
     COL_INICIO = 2
     COL_FIN = 5
 
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("6.")), None)
+    # CAMBIO: ahora busca la hoja que empieza con "7." (antes "6.")
+    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("7.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
 
@@ -1986,7 +1989,6 @@ if st.session_state["archivos_cargados"]:
         if data_centros:
             df_centros_export = pd.concat(data_centros, ignore_index=True)
             _safe_to_excel(df_centros_export, writer, "Centros de (I+D)")    
-
 
         if data_comunidades:
             df_comunidades_export = pd.concat(data_comunidades, ignore_index=True)
