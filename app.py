@@ -671,12 +671,12 @@ def analizar_hoja_alcance_servicios_raw(wb, proveedor):
 
 
 def analizar_hoja_metodologia(wb, proveedor):
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("7.")), None)
+    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("8.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Respuesta_C", "Respuesta_E", "Proveedor"])
     ws = wb[hoja_nombre]
     data = []
-    for r in range(8, ws.max_row + 1):
+    for r in range(6, ws.max_row + 1):
         val_c = ws.cell(r, 3).value
         if val_c is None:
             continue
@@ -710,13 +710,13 @@ def analizar_hoja_metodologia_raw(wb, proveedor):
     COL_INICIO = 2
     COL_FIN = 5
 
-    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("7.")), None)
+    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("8.")), None)
     if hoja_nombre is None:
         return pd.DataFrame(columns=["Proveedor"] + COLUMNAS)
 
     ws = wb[hoja_nombre]
     data = []
-    for r in range(8, ws.max_row + 1):
+    for r in range(6, ws.max_row + 1):
         valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
         if all(v is None for v in valores):
             continue
