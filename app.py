@@ -1679,7 +1679,7 @@ if st.session_state["archivos_cargados"]:
     _now_bogota      = datetime.now(tz=ZoneInfo("America/Bogota"))
     fecha_generacion = _now_bogota.strftime("%Y-%m-%d %H:%M:%S")
     _fecha_nombre    = _now_bogota.strftime("%d-%m-%Y-%H-%M-%S")
-    nombre_reporte   = f"reporte-magnex-{_fecha_nombre}.xlsx"
+    nombre_reporte   = f"reporte-uniban-{_fecha_nombre}.xlsx"
 
     bloques_info = construir_hoja_info_analisis(
         fecha_generacion=fecha_generacion,
