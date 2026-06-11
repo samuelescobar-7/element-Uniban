@@ -299,18 +299,30 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
     return pd.DataFrame(data)[COLUMNAS]
 
 
+# =========================
+# EXPERIENCIA OFERENTE — resumen pivot por industria
+# Nueva estructura hoja "5.": fila inicio 9, cols B(2)–I(9)
+#   B(2)  Nombre del contratante (Cliente)
+#   C(3)  País donde se realizó la implementación
+#   D(4)  Nombre del contacto
+#   E(5)  E-mail del contacto
+#   F(6)  Página Web
+#   G(7)  Tipo de Industria
+#   H(8)  Procesos implementados
+#   I(9)  Describa las integraciones del sistema core (ERP) y las soluciones avanzadas
+# =========================
 def analizar_hoja_experiencia_oferente(wb, proveedor):
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("5.")), None)
     if hoja_nombre is None:
         return pd.DataFrame([{"Sector/Industria": "", "País": "", "Proveedor": proveedor}])
     ws = wb[hoja_nombre]
     data = []
-    for r in range(11, ws.max_row + 1):
-        num = ws.cell(r, 2).value
+    for r in range(9, ws.max_row + 1):
+        num = ws.cell(r, 2).value          # col B — Nombre del contratante (Cliente)
         if num is None:
             continue
-        sector = ws.cell(r, 4).value
-        pais   = ws.cell(r, 5).value
+        sector = ws.cell(r, 7).value       # col G — Tipo de Industria
+        pais   = ws.cell(r, 3).value       # col C — País donde se realizó la implementación
         if sector is None and pais is None:
             continue
         data.append({
@@ -323,19 +335,23 @@ def analizar_hoja_experiencia_oferente(wb, proveedor):
     return pd.DataFrame(data)
 
 
+# =========================
+# EXPERIENCIA OFERENTE — detalle completo (raw)
+# Nueva estructura hoja "5.": fila inicio 9, cols B(2)–I(9)
+# =========================
 def analizar_hoja_experiencia_oferente_raw(wb, proveedor):
     COLUMNAS = [
         "Nombre del contratante (Cliente)",
-        "Sector/Industria",
-        "País",
-        "Procesos/componentes implementados y funcionando en la actualidad",
-        "Versión de la Solución",
+        "País donde se realizó la implementación",
         "Nombre del contacto",
         "E-mail del contacto",
-        "Teléfono del contacto",
+        "Página Web",
+        "Tipo de Industria",
+        "Procesos implementados",
+        "Describa las integraciones del sistema core (ERP) y las soluciones avanzadas",
     ]
-    COL_INICIO = 3
-    COL_FIN = 10
+    COL_INICIO = 2   # columna B
+    COL_FIN    = 9   # columna I
 
     hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith("5.")), None)
     if hoja_nombre is None:
@@ -343,10 +359,7 @@ def analizar_hoja_experiencia_oferente_raw(wb, proveedor):
 
     ws = wb[hoja_nombre]
     data = []
-    for r in range(11, ws.max_row + 1):
-        num = ws.cell(r, 2).value
-        if num is None:
-            continue
+    for r in range(9, ws.max_row + 1):
         valores = [ws.cell(r, c).value for c in range(COL_INICIO, COL_FIN + 1)]
         if all(v is None for v in valores):
             continue
