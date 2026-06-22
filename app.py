@@ -1443,7 +1443,7 @@ if st.session_state["archivos_cargados"]:
 
     for hoja_w in hojas_func_list:
         if f"peso_hoja_func_{hoja_w}" not in st.session_state:
-            st.session_state[f"peso_hoja_func_{hoja_w}"] = 100
+            st.session_state[f"peso_hoja_func_{hoja_w}"] = 100.0
 
     pesos_hojas_func = {}
     for hoja_w in hojas_func_list:
@@ -1453,9 +1453,10 @@ if st.session_state["archivos_cargados"]:
         with col_input:
             pesos_hojas_func[hoja_w] = st.number_input(
                 label=hoja_w,
-                min_value=0, max_value=100,
+                min_value=0.0, max_value=100.0,
                 value=st.session_state.get(f"peso_hoja_func_{hoja_w}", 100),
-                step=1,
+                step=0.1,
+                format="%.2f",
                 key=f"peso_hoja_func_{hoja_w}",
                 label_visibility="collapsed"
             )
@@ -1519,7 +1520,7 @@ if st.session_state["archivos_cargados"]:
 
     for hoja_w in hojas_nofunc_list:
         if f"peso_hoja_nf_{hoja_w}" not in st.session_state:
-            st.session_state[f"peso_hoja_nf_{hoja_w}"] = 100
+            st.session_state[f"peso_hoja_nf_{hoja_w}"] = 100.0
 
     pesos_hojas_nf = {}
     for hoja_w in hojas_nofunc_list:
@@ -1529,9 +1530,10 @@ if st.session_state["archivos_cargados"]:
         with col_input:
             pesos_hojas_nf[hoja_w] = st.number_input(
                 label=hoja_w,
-                min_value=0, max_value=100,
-                value=st.session_state.get(f"peso_hoja_nf_{hoja_w}", 100),
-                step=1,
+                min_value=0.0, max_value=100.0,
+                value=st.session_state.get(f"peso_hoja_nf_{hoja_w}", 100.0),
+                step=0.1,
+                format="%.2f",
                 key=f"peso_hoja_nf_{hoja_w}",
                 label_visibility="collapsed"
             )
