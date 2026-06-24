@@ -36,6 +36,86 @@ COL_RESPUESTA_NF_E = 5
 VALID_RESPUESTAS_NF_D = {"SI", "NO"}
 VALID_RESPUESTAS_NF_E = {"SI", "NO"}
 
+# =========================
+# AGRUPACIÓN DE HOJAS FUNCIONALES (1.X)
+# =========================
+GRUPOS_HOJAS_FUNC = [
+    ("COMERCIALIZADOR INTERNACIONAL", ["1.1", "1.4", "1.5", "1.6", "1.34"]),
+    ("LOGÍSTICA Y AGENCIA DE CARGA", ["1.7.1", "1.7.2", "1.8", "1.9", "1.10"]),
+    ("PRODUCCIÓN FRUTÍCOLA Y FINCAS ALIADAS - GESTIÓN FINCAS", ["1.2", "1.3", "1.28"]),
+    ("FÁBRICAS CAJAS", ["1.13"]),
+    ("FÁBRICAS PLASTICOS", ["1.14"]),
+    ("NEGOCIO SNACKS", ["1.15"]),
+    ("PRODUCTOS Y SERVICIOS AL CAMPO", ["1.16", "1.17"]),
+    ("TRANSVERSALES A LOS NEGOCIOS - CALIDAD Y TRAZABILIDAD", ["1.11", "1.12"]),
+    ("SERVICIOS CORPORATIVOS", ["1.18", "1.19", "1.20", "1.21", "1.22", "1.23", "1.24", "1.25", "1.26", "1.27"]),
+    ("FUNDACIÓN", ["1.29"]),
+    ("TMA EUROPA", ["1.30"]),
+]
+
+MARCADOR_GRUPO = "▶ "
+
+
+def obtener_prefijo_hoja(nombre_hoja):
+    nombre = str(nombre_hoja).strip()
+    m = re.match(r"^(\d+\.\d+(?:\.\d+)?)", nombre)
+    return m.group(1) if m else None
+
+
+def obtener_grupo_hoja(nombre_hoja):
+    """Devuelve el nombre del grupo/categoría al que pertenece una hoja 1.X, o None si no aplica."""
+    prefijo = obtener_prefijo_hoja(nombre_hoja)
+    if prefijo is None:
+        return None
+    for grupo_nombre, prefijos in GRUPOS_HOJAS_FUNC:
+        if prefijo in prefijos:
+            return grupo_nombre
+    return None
+
+
+def es_fila_grupo(valor_hoja):
+    """True si la fila corresponde a un encabezado de grupo (no a una hoja real)."""
+    return isinstance(valor_hoja, str) and valor_hoja.startswith(MARCADOR_GRUPO)
+
+
+def agrupar_df_por_categoria(df, columna_hoja="Hoja"):
+    """
+    Reordena las filas de un DataFrame indexado por hoja, insertando una fila de
+    encabezado (vacía salvo el nombre del grupo) antes de las hojas funcionales 1.X
+    que pertenezcan a cada categoría, en el orden de GRUPOS_HOJAS_FUNC.
+    Las hojas no reconocidas (p.ej. TOTAL u otras no funcionales) se dejan al final,
+    en su orden original, sin encabezado de grupo.
+    """
+    if df is None or df.empty or columna_hoja not in df.columns:
+        return df
+
+    columnas = list(df.columns)
+    otras_cols = [c for c in columnas if c != columna_hoja]
+
+    grupos_por_fila = df[columna_hoja].apply(obtener_grupo_hoja)
+
+    filas_finales = []
+    hojas_usadas = set()
+
+    for grupo_nombre, _ in GRUPOS_HOJAS_FUNC:
+        mascara = grupos_por_fila == grupo_nombre
+        sub_df = df[mascara]
+        if sub_df.empty:
+            continue
+        fila_header = {columna_hoja: f"{MARCADOR_GRUPO}{grupo_nombre}"}
+        for c in otras_cols:
+            fila_header[c] = ""
+        filas_finales.append(fila_header)
+        for _, row in sub_df.iterrows():
+            filas_finales.append({c: row[c] for c in columnas})
+            hojas_usadas.add(row[columna_hoja])
+
+    resto = df[~df[columna_hoja].isin(hojas_usadas)]
+    for _, row in resto.iterrows():
+        filas_finales.append({c: row[c] for c in columnas})
+
+    return pd.DataFrame(filas_finales, columns=columnas)
+
 
 # =========================
 # FUNCIONES
@@ -657,7 +737,9 @@ def formatear_porcentaje_df(df):
     df_fmt = df.copy()
     for col in df_fmt.columns:
         if col != "Hoja":
-            df_fmt[col] = df_fmt[col].apply(lambda x: f"{x:.2f}%")
+            df_fmt[col] = df_fmt[col].apply(
+                lambda x: f"{x:.2f}%" if isinstance(x, (int, float)) and not isinstance(x, bool) else x
+            )
     return df_fmt
 
 
@@ -1415,27 +1497,31 @@ if st.session_state["archivos_cargados"]:
     st.subheader("Cumplimiento funcional")
 
     st.markdown("#### Cumplimiento por hoja")
-    event = st.dataframe(formatear_porcentaje_df(df_final), on_select="rerun", key="df_func")
-    boton_descarga("⬇️ Descargar", {"Cumplimiento por hoja": df_final}, "f_cumplimiento_hoja.xlsx", "dl_f_cum_hoja")
+    df_final_agrupado = agrupar_df_por_categoria(df_final)
+    event = st.dataframe(formatear_porcentaje_df(df_final_agrupado), on_select="rerun", key="df_func")
+    boton_descarga("⬇️ Descargar", {"Cumplimiento por hoja": df_final_agrupado}, "f_cumplimiento_hoja.xlsx", "dl_f_cum_hoja")
     if event.selection.rows:
-        hoja = df_final.iloc[event.selection.rows[0]]["Hoja"]
-        st.session_state["detalle_hoja"] = hoja
-        st.session_state["detalle_df"] = pd.concat(detalles_globales[hoja])
-        st.session_state["detalle_df_k"] = pd.concat(detalles_globales_k[hoja]) if hoja in detalles_globales_k else None
-        st.session_state["pagina_actual"] = "detalle"
-        st.rerun()
+        hoja = df_final_agrupado.iloc[event.selection.rows[0]]["Hoja"]
+        if not es_fila_grupo(hoja):
+            st.session_state["detalle_hoja"] = hoja
+            st.session_state["detalle_df"] = pd.concat(detalles_globales[hoja])
+            st.session_state["detalle_df_k"] = pd.concat(detalles_globales_k[hoja]) if hoja in detalles_globales_k else None
+            st.session_state["pagina_actual"] = "detalle"
+            st.rerun()
 
     st.markdown("#### Calidad por hoja")
     if df_final_k is not None:
-        event_k = st.dataframe(formatear_porcentaje_df(df_final_k), on_select="rerun", key="df_cal_func")
-        boton_descarga("⬇️ Descargar", {"Calidad por hoja": df_final_k}, "f_calidad_hoja.xlsx", "dl_f_cal_hoja")
+        df_final_k_agrupado = agrupar_df_por_categoria(df_final_k)
+        event_k = st.dataframe(formatear_porcentaje_df(df_final_k_agrupado), on_select="rerun", key="df_cal_func")
+        boton_descarga("⬇️ Descargar", {"Calidad por hoja": df_final_k_agrupado}, "f_calidad_hoja.xlsx", "dl_f_cal_hoja")
         if event_k.selection.rows:
-            hoja_k = df_final_k.iloc[event_k.selection.rows[0]]["Hoja"]
-            st.session_state["detalle_hoja"] = hoja_k
-            st.session_state["detalle_df"] = pd.concat(detalles_globales[hoja_k]) if hoja_k in detalles_globales else None
-            st.session_state["detalle_df_k"] = pd.concat(detalles_globales_k[hoja_k])
-            st.session_state["pagina_actual"] = "detalle"
-            st.rerun()
+            hoja_k = df_final_k_agrupado.iloc[event_k.selection.rows[0]]["Hoja"]
+            if not es_fila_grupo(hoja_k):
+                st.session_state["detalle_hoja"] = hoja_k
+                st.session_state["detalle_df"] = pd.concat(detalles_globales[hoja_k]) if hoja_k in detalles_globales else None
+                st.session_state["detalle_df_k"] = pd.concat(detalles_globales_k[hoja_k])
+                st.session_state["pagina_actual"] = "detalle"
+                st.rerun()
 
     st.markdown("#### Pesos por hoja funcional")
     st.caption("Rango: 0 a 100 — indica el peso porcentual de cada hoja en el total funcional")
@@ -1446,20 +1532,38 @@ if st.session_state["archivos_cargados"]:
             st.session_state[f"peso_hoja_func_{hoja_w}"] = 100.0
 
     pesos_hojas_func = {}
+
+    def _render_pesos_hoja_func(hojas):
+        for hoja_w in hojas:
+            col_nombre, col_input = st.columns([2, 3])
+            with col_nombre:
+                st.markdown(f"<div style='padding-top:8px'>{hoja_w}</div>", unsafe_allow_html=True)
+            with col_input:
+                pesos_hojas_func[hoja_w] = st.number_input(
+                    label=hoja_w,
+                    min_value=0.0, max_value=100.0,
+                    value=st.session_state.get(f"peso_hoja_func_{hoja_w}", 100),
+                    step=0.1,
+                    format="%.2f",
+                    key=f"peso_hoja_func_{hoja_w}",
+                    label_visibility="collapsed"
+                )
+
+    _hojas_por_grupo_func = {}
     for hoja_w in hojas_func_list:
-        col_nombre, col_input = st.columns([2, 3])
-        with col_nombre:
-            st.markdown(f"<div style='padding-top:8px'>{hoja_w}</div>", unsafe_allow_html=True)
-        with col_input:
-            pesos_hojas_func[hoja_w] = st.number_input(
-                label=hoja_w,
-                min_value=0.0, max_value=100.0,
-                value=st.session_state.get(f"peso_hoja_func_{hoja_w}", 100),
-                step=0.1,
-                format="%.2f",
-                key=f"peso_hoja_func_{hoja_w}",
-                label_visibility="collapsed"
-            )
+        _hojas_por_grupo_func.setdefault(obtener_grupo_hoja(hoja_w), []).append(hoja_w)
+
+    for grupo_nombre, _ in GRUPOS_HOJAS_FUNC:
+        hojas_grupo = _hojas_por_grupo_func.get(grupo_nombre, [])
+        if not hojas_grupo:
+            continue
+        st.markdown(f"**{grupo_nombre}**")
+        _render_pesos_hoja_func(hojas_grupo)
+
+    hojas_sin_grupo_func = _hojas_por_grupo_func.get(None, [])
+    if hojas_sin_grupo_func:
+        st.markdown("**Otras hojas**")
+        _render_pesos_hoja_func(hojas_sin_grupo_func)
 
     _, col_btn_func, _ = st.columns([2, 1, 2])
     with col_btn_func:
@@ -1470,6 +1574,7 @@ if st.session_state["archivos_cargados"]:
             df_integrado_func, df_total_integrado_func = construir_tabla_integrada(
                 df_final, df_final_k, pesos_actuales_func, _ptcum, _ptcal
             )
+            df_integrado_func = agrupar_df_por_categoria(df_integrado_func)
             st.session_state["df_integrado_func"] = df_integrado_func
             st.session_state["df_total_integrado_func"] = df_total_integrado_func
             st.session_state["mostrar_total_func"] = True
@@ -1768,8 +1873,8 @@ if st.session_state["archivos_cargados"]:
             if df_pivot_cal is not None:
                 fila_ws = _write_pivot_block(ws_det, df_pivot_cal, "Calidad por requerimiento", fila_ws)
 
-        _safe_to_excel(df_final,   writer, "F - Comparativo")
-        _safe_to_excel(df_final_k, writer, "F - Calidad por hoja")
+        _safe_to_excel(agrupar_df_por_categoria(df_final),   writer, "F - Comparativo")
+        _safe_to_excel(agrupar_df_por_categoria(df_final_k), writer, "F - Calidad por hoja")
 
         _df_integ_func       = st.session_state.get("df_integrado_func")
         _df_total_integ_func = st.session_state.get("df_total_integrado_func")
