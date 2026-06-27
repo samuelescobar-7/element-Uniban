@@ -552,15 +552,13 @@ def analizar_hoja_alcance_servicios(wb, proveedor):
     ws = wb[hoja_nombre]
     data = []
     for r in range(6, ws.max_row + 1):
-        val_c = ws.cell(r, 3).value
-        if val_c is None:
-            continue
-        val_c_norm = str(val_c).strip().upper()
-        if val_c_norm not in {"SI", "NO"}:
-            continue
         nombre = ws.cell(r, 2).value
-        if nombre is None:
+        if nombre is None or str(nombre).strip() == "":
             continue
+        val_c = ws.cell(r, 3).value
+        val_c_norm = str(val_c).strip().upper() if val_c is not None else "VACIO"
+        if val_c_norm not in {"SI", "NO"}:
+            val_c_norm = "VACIO"
         val_e = ws.cell(r, 5).value
         val_e_norm = str(val_e).strip().upper() if val_e is not None else "VACIO"
         if val_e_norm not in VALID_RESPUESTAS_K:
@@ -612,15 +610,13 @@ def analizar_hoja_metodologia(wb, proveedor):
     ws = wb[hoja_nombre]
     data = []
     for r in range(6, ws.max_row + 1):
-        val_c = ws.cell(r, 3).value
-        if val_c is None:
-            continue
-        val_c_norm = str(val_c).strip().upper()
-        if val_c_norm not in {"SI", "NO"}:
-            continue
         nombre = ws.cell(r, 2).value
-        if nombre is None:
+        if nombre is None or str(nombre).strip() == "":
             continue
+        val_c = ws.cell(r, 3).value
+        val_c_norm = str(val_c).strip().upper() if val_c is not None else "VACIO"
+        if val_c_norm not in {"SI", "NO"}:
+            val_c_norm = "VACIO"
         val_e = ws.cell(r, 5).value
         val_e_norm = str(val_e).strip().upper() if val_e is not None else "VACIO"
         if val_e_norm not in VALID_RESPUESTAS_K:
