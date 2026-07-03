@@ -932,6 +932,38 @@ def _pivot_ordenado(df_datos, col_valor, orden):
     return pivot
 
 
+def pivotar_requerimiento_proveedor(df, nombres_proveedores=None):
+    """
+    Convierte un DataFrame en formato largo (Proveedor | Requerimiento | Respuesta)
+    en un DataFrame en formato ancho: Requerimiento | Proveedor1 | Proveedor2 | ... | ProveedorN.
+    El número de filas resultantes corresponde al número de requerimientos (filas)
+    analizados en la hoja de origen, preservando el orden original en que aparecen.
+    """
+    if df is None or df.empty:
+        return df
+
+    orden_req = list(dict.fromkeys(df["Requerimiento"].tolist()))
+
+    pivot = (
+        df.pivot_table(
+            index="Requerimiento",
+            columns="Proveedor",
+            values="Respuesta",
+            aggfunc="first"
+        )
+        .reindex(orden_req)
+        .reset_index()
+    )
+    pivot.columns.name = None
+    pivot = pivot.fillna("")
+
+    if nombres_proveedores:
+        cols = ["Requerimiento"] + [p for p in nombres_proveedores if p in pivot.columns]
+        pivot = pivot[cols]
+
+    return pivot
+
+
 def calcular_tabla_alcance(data_alcance_servicios, nombres_proveedores, pesos_k,
                             peso_total_cumplimiento, peso_total_calidad, peso_alcance):
     if not data_alcance_servicios:
@@ -1899,23 +1931,28 @@ if st.session_state["archivos_cargados"]:
 
         if data_info_solucion:
             df_info_sol_export = pd.concat(data_info_solucion, ignore_index=True)
-            _safe_to_excel(df_info_sol_export, writer, "Diferenciadores técnicos")
+            df_info_sol_pivot = pivotar_requerimiento_proveedor(df_info_sol_export, nombres_proveedores)
+            _safe_to_excel(df_info_sol_pivot, writer, "Diferenciadores técnicos")
 
         if data_evolucion:
             df_evol_export = pd.concat(data_evolucion, ignore_index=True)
-            _safe_to_excel(df_evol_export, writer, "Ruta evolucion")
+            df_evol_pivot = pivotar_requerimiento_proveedor(df_evol_export, nombres_proveedores)
+            _safe_to_excel(df_evol_pivot, writer, "Ruta evolucion")
 
         if data_red_partners:
             df_red_export = pd.concat(data_red_partners, ignore_index=True)
-            _safe_to_excel(df_red_export, writer, "Red de partners")
+            df_red_pivot = pivotar_requerimiento_proveedor(df_red_export, nombres_proveedores)
+            _safe_to_excel(df_red_pivot, writer, "Red de partners")
 
         if data_centros:
             df_centros_export = pd.concat(data_centros, ignore_index=True)
-            _safe_to_excel(df_centros_export, writer, "Centros de (I+D)")
+            df_centros_pivot = pivotar_requerimiento_proveedor(df_centros_export, nombres_proveedores)
+            _safe_to_excel(df_centros_pivot, writer, "Centros de (I+D)")
 
         if data_comunidades:
             df_comunidades_export = pd.concat(data_comunidades, ignore_index=True)
-            _safe_to_excel(df_comunidades_export, writer, "Comunidades colaborativas")
+            df_comunidades_pivot = pivotar_requerimiento_proveedor(df_comunidades_export, nombres_proveedores)
+            _safe_to_excel(df_comunidades_pivot, writer, "Comunidades colaborativas")
 
         if data_alcance_servicios_raw:
             df_alc_raw_export = pd.concat(data_alcance_servicios_raw, ignore_index=True)
