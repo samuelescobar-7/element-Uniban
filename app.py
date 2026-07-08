@@ -37,6 +37,62 @@ VALID_RESPUESTAS_NF_D = {"SI", "NO"}
 VALID_RESPUESTAS_NF_E = {"SI", "NO"}
 
 # =========================
+# "OTRAS" — filas adicionales de % en blanco (hoja "% en blanco")
+# =========================
+# Cada entrada define: etiqueta a mostrar en la columna "Proceso", el prefijo de la
+# hoja de origen, el rango de filas a inspeccionar y el número de columna donde
+# están las respuestas. El % en blanco se calcula como:
+#   (celdas vacías en ese rango) / (total de filas del rango) * 100
+OTRAS_FILAS_BLANCO_CONFIG = [
+    {
+        "label": "2. Información de la Solución",
+        "hoja_prefijo": "2.",
+        "fila_inicio": 5,
+        "fila_fin": 28,
+        "columna": 3,  # Columna C
+    },
+]
+
+# =========================
+# "OTRAS" — filas adicionales de conteo de registros (hoja "% en blanco")
+# =========================
+# Cada entrada define: etiqueta a mostrar en la columna "Proceso" y la clave con la
+# que se encuentra la lista de DataFrames (uno por proveedor) en el diccionario de
+# fuentes de datos que se pasa a `construir_tabla_conteo_registros`. El conteo es
+# simplemente el número de filas (registros) consolidados por proveedor en esa
+# fuente; si un proveedor no tiene registros, se reporta 0.
+OTRAS_CONTEO_REGISTROS_CONFIG = [
+    {
+        "label": "Numero de registros en 3. Experiencia del Fabricante",
+        "fuente": "data_experiencia_raw",
+    },
+    {
+        "label": "Numero de registros en 5. Experiencia del Proponente",
+        "fuente": "data_experiencia_oferente_raw",
+    },
+]
+
+# =========================
+# "OTRAS" — filas adicionales de % en blanco de la columna C (Incluido SI/NO)
+# para "7. Alcance Servicios" y "8. Metodología"
+# =========================
+# Cada entrada define: etiqueta a mostrar en la columna "Proceso" y la clave con la
+# que se encuentra la lista de DataFrames (uno por proveedor, con la columna
+# "Respuesta_C") ya calculada previamente para Alcance/Metodología
+# (data_alcance_servicios / data_metodologia). El % en blanco se calcula sobre el
+# mismo total de filas (100%) usado en esos cálculos, por proveedor.
+OTRAS_BLANCOS_COLUMNA_C_CONFIG = [
+    {
+        "label": "7. Alcance Servicios",
+        "fuente": "data_alcance_servicios",
+    },
+    {
+        "label": "8. Metodología",
+        "fuente": "data_metodologia",
+    },
+]
+
+# =========================
 # AGRUPACIÓN DE HOJAS FUNCIONALES (1.X)
 # =========================
 GRUPOS_HOJAS_FUNC = [
@@ -177,6 +233,8 @@ def analizar_hoja(ws, pesos_f, peso_col_f, peso_col_g):
             "Fila": r,
             "ID": str(id_req).strip() if id_req is not None else "",
             "Requerimiento": requerimiento,
+            "Resp_F": resp_f,
+            "Resp_G": resp_g,
             "Peso_F": peso_f,
             "Peso_G": peso_g,
             "Peso_Total": peso_f + peso_g
@@ -229,6 +287,8 @@ def analizar_hoja_nf(ws, peso_col_d, peso_col_e):
             "Fila": r,
             "ID": str(id_req).strip() if id_req is not None else "",
             "Requerimiento": requerimiento,
+            "Resp_D": resp_d,
+            "Resp_E": resp_e,
             "Peso_F": peso_d,
             "Peso_G": peso_e,
             "Peso_Total": peso_d + peso_e
@@ -1038,6 +1098,359 @@ def calcular_tabla_metodologia(data_metodologia, nombres_proveedores, pesos_k,
     return pd.DataFrame([fila_fmt]), pd.DataFrame([fila_raw])
 
 
+def analizar_blancos_rango(wb, hoja_prefijo, fila_inicio, fila_fin, columna):
+    """
+    Calcula cuántas celdas están en blanco en una columna específica, dentro de un
+    rango de filas fijo, en la primera hoja cuyo nombre empiece con `hoja_prefijo`.
+    Devuelve (blancos, total) o (None, None) si no se encuentra la hoja.
+    """
+    hoja_nombre = next((s for s in wb.sheetnames if s.strip().startswith(hoja_prefijo)), None)
+    if hoja_nombre is None:
+        return None, None
+    ws = wb[hoja_nombre]
+    total = fila_fin - fila_inicio + 1
+    blancos = 0
+    for r in range(fila_inicio, fila_fin + 1):
+        val = ws.cell(r, columna).value
+        if val is None or str(val).strip() == "":
+            blancos += 1
+    return blancos, total
+
+
+def construir_tabla_blancos_otras(data_otras_blancos, nombres_proveedores):
+    """
+    Construye la tabla de la sección "Otras" de la hoja "% en blanco", a partir de
+    los conteos recolectados por `analizar_blancos_rango` para cada entrada de
+    OTRAS_FILAS_BLANCO_CONFIG.
+
+    Devuelve un DataFrame con columnas: Proceso | <proveedor1> | <proveedor2> | ...
+    """
+    if not data_otras_blancos:
+        return None
+
+    filas = []
+    for cfg in OTRAS_FILAS_BLANCO_CONFIG:
+        label = cfg["label"]
+        fila = {"Proceso": label}
+        conteos_label = data_otras_blancos.get(label, {})
+        for prov in nombres_proveedores:
+            conteo = conteos_label.get(prov)
+            if conteo is None:
+                fila[prov] = 0.0
+                continue
+            blancos, total = conteo
+            if blancos is None or not total:
+                fila[prov] = 0.0
+            else:
+                fila[prov] = round((blancos / total) * 100, 2)
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"] + nombres_proveedores
+    df_otras = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_otras.columns:
+            df_otras[c] = 0.0
+    df_otras = df_otras[columnas_orden]
+    return df_otras
+
+
+# =========================
+# "OTRAS" — conteo de registros consolidados (no es %, es cantidad)
+# =========================
+def construir_tabla_conteo_registros(config_list, fuentes_datos, nombres_proveedores):
+    """
+    Construye filas de conteo de registros (cantidades, no porcentajes) para la
+    sección "Otras" de la hoja "% en blanco".
+
+    `fuentes_datos` es un diccionario donde cada clave coincide con el campo
+    "fuente" de `config_list` y el valor es la lista de DataFrames (uno o más por
+    proveedor, tal como se acumulan durante el procesamiento, p.ej.
+    `data_experiencia_raw` o `data_experiencia_oferente_raw`) usada para construir
+    las hojas "Exp - Fabricante completa" y "Exp - Oferente completa".
+
+    El conteo por proveedor es simplemente el número de filas (registros)
+    consolidados para ese proveedor en la fuente correspondiente; si el proveedor
+    no tiene registros, se reporta 0.
+
+    Devuelve un DataFrame con columnas: Proceso | <proveedor1> | <proveedor2> | ...
+    """
+    if not config_list:
+        return None
+
+    filas = []
+    for cfg in config_list:
+        label = cfg["label"]
+        lista_dfs = fuentes_datos.get(cfg["fuente"]) or []
+
+        conteos = {}
+        if lista_dfs:
+            df_all = pd.concat(lista_dfs, ignore_index=True)
+            if not df_all.empty and "Proveedor" in df_all.columns:
+                conteos = df_all.groupby("Proveedor").size().to_dict()
+
+        fila = {"Proceso": label}
+        for prov in nombres_proveedores:
+            fila[prov] = int(conteos.get(prov, 0))
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"] + nombres_proveedores
+    df_conteo = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_conteo.columns:
+            df_conteo[c] = 0
+    df_conteo = df_conteo[columnas_orden]
+    return df_conteo
+
+
+# =========================
+# "OTRAS" — % en blanco de la columna C (Incluido SI/NO) para
+# "7. Alcance Servicios" y "8. Metodología"
+# =========================
+def construir_tabla_blancos_columna_c(config_list, fuentes_datos, nombres_proveedores):
+    """
+    Construye filas de % en blanco de la columna C ("Incluido (SI/NO)", almacenada
+    como "Respuesta_C") para la sección "Otras" de la hoja "% en blanco", a partir
+    de las listas de DataFrames ya calculadas para Alcance de servicios y
+    Metodología (las mismas usadas en `calcular_tabla_alcance` y
+    `calcular_tabla_metodologia`).
+
+    El % en blanco se calcula, por proveedor, como:
+        (filas con Respuesta_C == "VACIO") / (total de filas del proveedor) * 100
+    usando el mismo total (100%) que ya se usa en el cálculo del puntaje de
+    alcance/metodología.
+
+    Devuelve un DataFrame con columnas: Proceso | <proveedor1> | <proveedor2> | ...
+    """
+    if not config_list:
+        return None
+
+    filas = []
+    for cfg in config_list:
+        label = cfg["label"]
+        lista_dfs = fuentes_datos.get(cfg["fuente"]) or []
+        df_all = pd.concat(lista_dfs, ignore_index=True) if lista_dfs else pd.DataFrame()
+
+        fila = {"Proceso": label}
+        for prov in nombres_proveedores:
+            if df_all.empty or "Proveedor" not in df_all.columns:
+                fila[prov] = 0.0
+                continue
+            df_prov = df_all[df_all["Proveedor"] == prov]
+            total = len(df_prov)
+            if total == 0 or "Respuesta_C" not in df_prov.columns:
+                fila[prov] = 0.0
+                continue
+            blancos = (df_prov["Respuesta_C"] == "VACIO").sum()
+            fila[prov] = round((blancos / total) * 100, 2)
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"] + nombres_proveedores
+    df_res = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_res.columns:
+            df_res[c] = 0.0
+    df_res = df_res[columnas_orden]
+    return df_res
+
+
+# =========================
+# % EN BLANCO — Requerimientos funcionales
+# =========================
+def construir_tabla_blancos_funcional(detalles_globales, nombres_proveedores):
+    """
+    Construye una tabla con el % de casillas en blanco (VACIO) de la columna F
+    y de la columna G, por hoja funcional (proceso) y por proveedor, calculado
+    sobre el total de filas reconocidas en el cumplimiento para ese proveedor
+    en esa hoja.
+
+    Devuelve un DataFrame con columnas:
+    Proceso | Columna F <prov1> | Columna G <prov1> | ... | Columna F <provN> | Columna G <provN>
+    """
+    if not detalles_globales:
+        return None
+
+    filas = []
+    for hoja, lista_dfs in detalles_globales.items():
+        fila = {"Proceso": hoja}
+        for prov in nombres_proveedores:
+            df_prov = None
+            for df_ in lista_dfs:
+                if df_ is not None and not df_.empty and df_["Proveedor"].iloc[0] == prov:
+                    df_prov = df_
+                    break
+
+            col_f_name = f"Columna F {prov}"
+            col_g_name = f"Columna G {prov}"
+
+            if df_prov is None or df_prov.empty or "Resp_F" not in df_prov.columns:
+                fila[col_f_name] = 0.0
+                fila[col_g_name] = 0.0
+                continue
+
+            total = len(df_prov)
+            blancos_f = (df_prov["Resp_F"] == "VACIO").sum()
+            blancos_g = (df_prov["Resp_G"] == "VACIO").sum()
+
+            fila[col_f_name] = round((blancos_f / total) * 100, 2) if total else 0.0
+            fila[col_g_name] = round((blancos_g / total) * 100, 2) if total else 0.0
+
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"]
+    for prov in nombres_proveedores:
+        columnas_orden.append(f"Columna F {prov}")
+        columnas_orden.append(f"Columna G {prov}")
+
+    df_blancos = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_blancos.columns:
+            df_blancos[c] = 0.0
+    df_blancos = df_blancos[columnas_orden]
+    return df_blancos
+
+
+def construir_tabla_blancos_no_funcional(detalles_globales_nf, nombres_proveedores):
+    """
+    Igual que construir_tabla_blancos_funcional, pero para las hojas no funcionales,
+    donde las respuestas relevantes están en las columnas D y E (Resp_D / Resp_E).
+
+    Devuelve un DataFrame con columnas:
+    Proceso | Columna D <prov1> | Columna E <prov1> | ... | Columna D <provN> | Columna E <provN>
+    """
+    if not detalles_globales_nf:
+        return None
+
+    filas = []
+    for hoja, lista_dfs in detalles_globales_nf.items():
+        fila = {"Proceso": hoja}
+        for prov in nombres_proveedores:
+            df_prov = None
+            for df_ in lista_dfs:
+                if df_ is not None and not df_.empty and df_["Proveedor"].iloc[0] == prov:
+                    df_prov = df_
+                    break
+
+            col_d_name = f"Columna D {prov}"
+            col_e_name = f"Columna E {prov}"
+
+            if df_prov is None or df_prov.empty or "Resp_D" not in df_prov.columns:
+                fila[col_d_name] = 0.0
+                fila[col_e_name] = 0.0
+                continue
+
+            total = len(df_prov)
+            blancos_d = (df_prov["Resp_D"] == "VACIO").sum()
+            blancos_e = (df_prov["Resp_E"] == "VACIO").sum()
+
+            fila[col_d_name] = round((blancos_d / total) * 100, 2) if total else 0.0
+            fila[col_e_name] = round((blancos_e / total) * 100, 2) if total else 0.0
+
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"]
+    for prov in nombres_proveedores:
+        columnas_orden.append(f"Columna D {prov}")
+        columnas_orden.append(f"Columna E {prov}")
+
+    df_blancos = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_blancos.columns:
+            df_blancos[c] = 0.0
+    df_blancos = df_blancos[columnas_orden]
+    return df_blancos
+
+
+def _escribir_bloque_blancos(ws, df_bloque, titulo, columnas_orden, fila_inicio, agrupar=False, filas_enteras=None):
+    """Escribe un bloque (título + encabezados + filas) de % en blanco a partir de la fila_inicio.
+    Las filas cuyo valor de "Proceso" esté en `filas_enteras` se escriben como números
+    enteros (conteos), sin formato de porcentaje.
+    Devuelve la siguiente fila libre después del bloque."""
+    fila_actual = fila_inicio
+    n_cols = len(columnas_orden)
+    filas_enteras = filas_enteras or set()
+
+    ws.cell(row=fila_actual, column=1, value=titulo).font = openpyxl.styles.Font(bold=True, size=12)
+    if n_cols > 1:
+        ws.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=n_cols)
+    fila_actual += 1
+
+    if df_bloque is None or df_bloque.empty:
+        ws.cell(row=fila_actual, column=1, value="No se encontraron datos.")
+        return fila_actual + 2
+
+    for col_idx, col_name in enumerate(columnas_orden, start=1):
+        ws.cell(row=fila_actual, column=col_idx, value=col_name).font = openpyxl.styles.Font(bold=True)
+    fila_actual += 1
+
+    df_escribir = agrupar_df_por_categoria(df_bloque, columna_hoja="Proceso") if agrupar else df_bloque
+
+    for _, row in df_escribir.iterrows():
+        es_fila_entera = row.get("Proceso") in filas_enteras
+        for col_idx, col_name in enumerate(columnas_orden, start=1):
+            val = row.get(col_name, "")
+            if col_name != "Proceso" and isinstance(val, (int, float)) and not isinstance(val, bool):
+                val = int(val) if es_fila_entera else f"{val:.2f}%"
+            ws.cell(row=fila_actual, column=col_idx, value=val)
+        fila_actual += 1
+
+    return fila_actual + 1
+
+
+def escribir_hoja_blancos(writer, df_blancos_func, nombres_proveedores_func,
+                           df_blancos_nf, nombres_proveedores_nf,
+                           df_blancos_otras=None, nombres_proveedores_otras=None,
+                           filas_enteras_otras=None):
+    """Escribe la hoja '% en blanco' con tres bloques: requerimientos funcionales
+    (columnas F/G), requerimientos no funcionales (columnas D/E) y "Otras"
+    (filas adicionales de % en blanco definidas en OTRAS_FILAS_BLANCO_CONFIG, más
+    las filas de conteo de registros definidas en OTRAS_CONTEO_REGISTROS_CONFIG)."""
+    hay_func = df_blancos_func is not None and not df_blancos_func.empty
+    hay_nf = df_blancos_nf is not None and not df_blancos_nf.empty
+    hay_otras = df_blancos_otras is not None and not df_blancos_otras.empty
+    if not hay_func and not hay_nf and not hay_otras:
+        return
+
+    columnas_func = ["Proceso"]
+    for prov in nombres_proveedores_func:
+        columnas_func.append(f"Columna F {prov}")
+        columnas_func.append(f"Columna G {prov}")
+
+    columnas_nf = ["Proceso"]
+    for prov in nombres_proveedores_nf:
+        columnas_nf.append(f"Columna D {prov}")
+        columnas_nf.append(f"Columna E {prov}")
+
+    columnas_otras = ["Proceso"] + (nombres_proveedores_otras or [])
+
+    ws = writer.book.create_sheet("% en blanco")
+    fila_actual = 1
+
+    fila_actual = _escribir_bloque_blancos(
+        ws, df_blancos_func, "Requerimientos funcionales", columnas_func, fila_actual, agrupar=True
+    )
+    fila_actual = _escribir_bloque_blancos(
+        ws, df_blancos_nf, "Requerimientos no funcionales", columnas_nf, fila_actual, agrupar=False
+    )
+    if hay_otras:
+        fila_actual = _escribir_bloque_blancos(
+            ws, df_blancos_otras, "Otras", columnas_otras, fila_actual, agrupar=False,
+            filas_enteras=filas_enteras_otras
+        )
+
+    n_cols_total = max(len(columnas_func), len(columnas_nf), len(columnas_otras))
+    for col_idx in range(1, n_cols_total + 1):
+        col_letter = openpyxl.utils.get_column_letter(col_idx)
+        max_len = 0
+        for row_idx in range(1, fila_actual):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            try:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            except Exception:
+                pass
+        ws.column_dimensions[col_letter].width = min(max_len + 4, 40)
+
+
 # =========================
 # UI
 # =========================
@@ -1225,6 +1638,7 @@ if archivos and not st.session_state["archivos_cargados"]:
     data_red_partners = []
     data_centros = []
     data_comunidades = []
+    data_otras_blancos = {cfg["label"]: {} for cfg in OTRAS_FILAS_BLANCO_CONFIG}
     metadata_archivos = []
     nombres_proveedores = []
 
@@ -1274,6 +1688,12 @@ if archivos and not st.session_state["archivos_cargados"]:
             detalles_globales_k_nf.setdefault(hoja, []).append(df_)
 
         wb_exp = openpyxl.load_workbook(path, data_only=True)
+
+        for cfg in OTRAS_FILAS_BLANCO_CONFIG:
+            blancos, total = analizar_blancos_rango(
+                wb_exp, cfg["hoja_prefijo"], cfg["fila_inicio"], cfg["fila_fin"], cfg["columna"]
+            )
+            data_otras_blancos[cfg["label"]][proveedor] = (blancos, total)
 
         df_exp_raw = analizar_hoja_experiencia_raw(wb_exp, proveedor)
         if df_exp_raw is not None and not df_exp_raw.empty:
@@ -1350,6 +1770,7 @@ if archivos and not st.session_state["archivos_cargados"]:
         "data_red_partners": data_red_partners,
         "data_centros": data_centros,
         "data_comunidades": data_comunidades,
+        "data_otras_blancos": data_otras_blancos,
         "metadata_archivos": metadata_archivos,
         "nombres_proveedores": nombres_proveedores,
         "param_peso_col_f_raw": peso_col_f_pct,
@@ -1518,6 +1939,7 @@ if st.session_state["archivos_cargados"]:
     data_red_partners         = st.session_state.get("data_red_partners", [])
     data_centros              = st.session_state.get("data_centros", [])
     data_comunidades          = st.session_state.get("data_comunidades", [])
+    data_otras_blancos        = st.session_state.get("data_otras_blancos", {})
     metadata_archivos      = st.session_state.get("metadata_archivos", [])
     nombres_proveedores    = st.session_state.get("nombres_proveedores", [])
 
@@ -2065,6 +2487,46 @@ if st.session_state["archivos_cargados"]:
                 df_exp_of_raw_export = pd.concat(data_experiencia_oferente_raw, ignore_index=True)
                 _safe_to_excel(df_exp_of_raw_export, writer, "Exp - Oferente completa")
             _safe_to_excel(_pivot_of, writer, "Exp - Oferente por sector")
+
+        # ---- % EN BLANCO (funcional F/G + no funcional D/E + Otras) — penúltima hoja del reporte ----
+        df_blancos_func = construir_tabla_blancos_funcional(detalles_globales, nombres_proveedores)
+        df_blancos_nf = construir_tabla_blancos_no_funcional(detalles_globales_nf, nombres_proveedores)
+        df_blancos_otras = construir_tabla_blancos_otras(data_otras_blancos, nombres_proveedores)
+
+        df_conteo_registros = construir_tabla_conteo_registros(
+            OTRAS_CONTEO_REGISTROS_CONFIG,
+            {
+                "data_experiencia_raw": data_experiencia_raw,
+                "data_experiencia_oferente_raw": data_experiencia_oferente_raw,
+            },
+            nombres_proveedores,
+        )
+        filas_enteras_otras = {cfg["label"] for cfg in OTRAS_CONTEO_REGISTROS_CONFIG}
+        if df_conteo_registros is not None and not df_conteo_registros.empty:
+            if df_blancos_otras is not None and not df_blancos_otras.empty:
+                df_blancos_otras = pd.concat([df_blancos_otras, df_conteo_registros], ignore_index=True)
+            else:
+                df_blancos_otras = df_conteo_registros
+
+        df_blancos_col_c = construir_tabla_blancos_columna_c(
+            OTRAS_BLANCOS_COLUMNA_C_CONFIG,
+            {
+                "data_alcance_servicios": data_alcance_servicios,
+                "data_metodologia": st.session_state.get("data_metodologia", []),
+            },
+            nombres_proveedores,
+        )
+        if df_blancos_col_c is not None and not df_blancos_col_c.empty:
+            if df_blancos_otras is not None and not df_blancos_otras.empty:
+                df_blancos_otras = pd.concat([df_blancos_otras, df_blancos_col_c], ignore_index=True)
+            else:
+                df_blancos_otras = df_blancos_col_c
+
+        escribir_hoja_blancos(
+            writer, df_blancos_func, nombres_proveedores, df_blancos_nf, nombres_proveedores,
+            df_blancos_otras, nombres_proveedores,
+            filas_enteras_otras=filas_enteras_otras
+        )
 
         escribir_hoja_info_analisis(writer, bloques_info)
 
