@@ -1360,6 +1360,35 @@ def construir_tabla_blancos_no_funcional(detalles_globales_nf, nombres_proveedor
     return df_blancos
 
 
+def invertir_porcentaje_df(df, filas_sin_invertir=None):
+    """
+    Devuelve una copia de un DataFrame de tipo "% en blanco" (columna "Proceso" +
+    columnas numéricas por proveedor) donde cada valor numérico se invierte como
+    100 - valor, para obtener el "% Diligenciado" equivalente.
+
+    Las filas cuyo valor de "Proceso" esté en `filas_sin_invertir` (por ejemplo,
+    las filas de conteo de registros, que son cantidades y no porcentajes) se
+    dejan sin cambios.
+    """
+    if df is None or df.empty:
+        return df
+
+    filas_sin_invertir = filas_sin_invertir or set()
+    df_inv = df.copy()
+
+    for idx, row in df_inv.iterrows():
+        if row.get("Proceso") in filas_sin_invertir:
+            continue
+        for col in df_inv.columns:
+            if col == "Proceso":
+                continue
+            val = row[col]
+            if isinstance(val, (int, float)) and not isinstance(val, bool):
+                df_inv.at[idx, col] = round(100 - val, 2)
+
+    return df_inv
+
+
 def _escribir_bloque_blancos(ws, df_bloque, titulo, columnas_orden, fila_inicio, agrupar=False, filas_enteras=None):
     """Escribe un bloque (título + encabezados + filas) de % en blanco a partir de la fila_inicio.
     Las filas cuyo valor de "Proceso" esté en `filas_enteras` se escriben como números
@@ -1399,11 +1428,14 @@ def _escribir_bloque_blancos(ws, df_bloque, titulo, columnas_orden, fila_inicio,
 def escribir_hoja_blancos(writer, df_blancos_func, nombres_proveedores_func,
                            df_blancos_nf, nombres_proveedores_nf,
                            df_blancos_otras=None, nombres_proveedores_otras=None,
-                           filas_enteras_otras=None):
-    """Escribe la hoja '% en blanco' con tres bloques: requerimientos funcionales
+                           filas_enteras_otras=None, nombre_hoja="% en blanco"):
+    """Escribe una hoja con tres bloques: requerimientos funcionales
     (columnas F/G), requerimientos no funcionales (columnas D/E) y "Otras"
-    (filas adicionales de % en blanco definidas en OTRAS_FILAS_BLANCO_CONFIG, más
-    las filas de conteo de registros definidas en OTRAS_CONTEO_REGISTROS_CONFIG)."""
+    (filas adicionales definidas en OTRAS_FILAS_BLANCO_CONFIG, más
+    las filas de conteo de registros definidas en OTRAS_CONTEO_REGISTROS_CONFIG).
+
+    El parámetro `nombre_hoja` permite reutilizar esta función tanto para
+    "% en blanco" como para "% Diligenciado" (misma estructura, valores invertidos)."""
     hay_func = df_blancos_func is not None and not df_blancos_func.empty
     hay_nf = df_blancos_nf is not None and not df_blancos_nf.empty
     hay_otras = df_blancos_otras is not None and not df_blancos_otras.empty
@@ -1422,7 +1454,7 @@ def escribir_hoja_blancos(writer, df_blancos_func, nombres_proveedores_func,
 
     columnas_otras = ["Proceso"] + (nombres_proveedores_otras or [])
 
-    ws = writer.book.create_sheet("% en blanco")
+    ws = writer.book.create_sheet(nombre_hoja)
     fila_actual = 1
 
     fila_actual = _escribir_bloque_blancos(
@@ -2525,7 +2557,20 @@ if st.session_state["archivos_cargados"]:
         escribir_hoja_blancos(
             writer, df_blancos_func, nombres_proveedores, df_blancos_nf, nombres_proveedores,
             df_blancos_otras, nombres_proveedores,
-            filas_enteras_otras=filas_enteras_otras
+            filas_enteras_otras=filas_enteras_otras,
+            nombre_hoja="% en blanco"
+        )
+
+        # ---- % DILIGENCIADO (equivalente a "% en blanco" pero invertido: 100 - % en blanco) ----
+        df_blancos_func_dilig = invertir_porcentaje_df(df_blancos_func)
+        df_blancos_nf_dilig = invertir_porcentaje_df(df_blancos_nf)
+        df_blancos_otras_dilig = invertir_porcentaje_df(df_blancos_otras, filas_sin_invertir=filas_enteras_otras)
+
+        escribir_hoja_blancos(
+            writer, df_blancos_func_dilig, nombres_proveedores, df_blancos_nf_dilig, nombres_proveedores,
+            df_blancos_otras_dilig, nombres_proveedores,
+            filas_enteras_otras=filas_enteras_otras,
+            nombre_hoja="% Diligenciado"
         )
 
         escribir_hoja_info_analisis(writer, bloques_info)
