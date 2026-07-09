@@ -2722,7 +2722,7 @@ if st.session_state["archivos_cargados"]:
             key="dl_reporte_completo"
         )
     with col_dl_validaciones:
-        _nombre_reporte_val = f"reporte-validaciones-{_fecha_nombre}.xlsx"
+        _nombre_reporte_val = f"reporte-validaciones-uniban-{_fecha_nombre}.xlsx"
         st.download_button(
             "⬇️ Descargar reporte de validaciones",
             buffer_validaciones.getvalue(),
