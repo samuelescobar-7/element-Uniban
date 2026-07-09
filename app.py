@@ -1425,6 +1425,139 @@ def _escribir_bloque_blancos(ws, df_bloque, titulo, columnas_orden, fila_inicio,
     return fila_actual + 1
 
 
+def _sanitizar_nombre_hoja(nombre, existentes):
+    """
+    Convierte el nombre de un proveedor en un nombre de hoja Excel válido:
+    quita caracteres no permitidos (: \\ / ? * [ ]), lo recorta a 31 caracteres
+    y evita colisiones con nombres de hoja ya usados en `existentes` (se
+    modifica in-place agregando el nombre final).
+    """
+    invalidos = set(':\\/?*[]')
+    limpio = "".join(c for c in str(nombre) if c not in invalidos).strip()
+    if not limpio:
+        limpio = "Proveedor"
+    limpio = limpio[:31]
+
+    base = limpio
+    contador = 1
+    while limpio in existentes:
+        sufijo = f"_{contador}"
+        limpio = base[: 31 - len(sufijo)] + sufijo
+        contador += 1
+
+    existentes.add(limpio)
+    return limpio
+
+
+def construir_bloques_diligenciado_proveedor(df_blancos_func_dilig, df_blancos_nf_dilig,
+                                              df_blancos_otras_dilig, proveedor):
+    """
+    Extrae, para un único proveedor, los tres bloques de "% Diligenciado"
+    (funcional, no funcional y "Otras") a partir de las tablas consolidadas
+    (que tienen una columna por proveedor), devolviendo DataFrames de una sola
+    columna de valores (además de "Proceso"), con nombres de columna genéricos
+    ("Columna F", "Columna G", "Columna D", "Columna E", "% Diligenciado")
+    listos para escribirse en la hoja propia del proveedor.
+    """
+    df_func_prov = None
+    if df_blancos_func_dilig is not None and not df_blancos_func_dilig.empty:
+        f_col = f"Columna F {proveedor}"
+        g_col = f"Columna G {proveedor}"
+        cols = ["Proceso"]
+        rename = {}
+        if f_col in df_blancos_func_dilig.columns:
+            cols.append(f_col)
+            rename[f_col] = "Columna F"
+        if g_col in df_blancos_func_dilig.columns:
+            cols.append(g_col)
+            rename[g_col] = "Columna G"
+        if len(cols) > 1:
+            df_func_prov = df_blancos_func_dilig[cols].rename(columns=rename)
+
+    df_nf_prov = None
+    if df_blancos_nf_dilig is not None and not df_blancos_nf_dilig.empty:
+        d_col = f"Columna D {proveedor}"
+        e_col = f"Columna E {proveedor}"
+        cols = ["Proceso"]
+        rename = {}
+        if d_col in df_blancos_nf_dilig.columns:
+            cols.append(d_col)
+            rename[d_col] = "Columna D"
+        if e_col in df_blancos_nf_dilig.columns:
+            cols.append(e_col)
+            rename[e_col] = "Columna E"
+        if len(cols) > 1:
+            df_nf_prov = df_blancos_nf_dilig[cols].rename(columns=rename)
+
+    df_otras_prov = None
+    if (df_blancos_otras_dilig is not None and not df_blancos_otras_dilig.empty
+            and proveedor in df_blancos_otras_dilig.columns):
+        df_otras_prov = df_blancos_otras_dilig[["Proceso", proveedor]].rename(
+            columns={proveedor: "% Diligenciado"}
+        )
+
+    return df_func_prov, df_nf_prov, df_otras_prov
+
+
+def escribir_hojas_diligenciado_por_proveedor(writer, df_blancos_func_dilig, df_blancos_nf_dilig,
+                                               df_blancos_otras_dilig, nombres_proveedores,
+                                               filas_enteras_otras=None):
+    """
+    Escribe una hoja por proveedor (nombrada con el nombre del proveedor) con los
+    mismos tres bloques de "% Diligenciado" (Requerimientos funcionales,
+    Requerimientos no funcionales, Otras), pero mostrando únicamente los valores
+    de ese proveedor en vez de una columna por proveedor.
+    """
+    if not nombres_proveedores:
+        return
+
+    cols_func = ["Proceso", "Columna F", "Columna G"]
+    cols_nf = ["Proceso", "Columna D", "Columna E"]
+    cols_otras = ["Proceso", "% Diligenciado"]
+
+    nombres_hojas_usados = set(ws.title for ws in writer.book.worksheets)
+
+    for proveedor in nombres_proveedores:
+        df_func_prov, df_nf_prov, df_otras_prov = construir_bloques_diligenciado_proveedor(
+            df_blancos_func_dilig, df_blancos_nf_dilig, df_blancos_otras_dilig, proveedor
+        )
+
+        hay_func = df_func_prov is not None and not df_func_prov.empty
+        hay_nf = df_nf_prov is not None and not df_nf_prov.empty
+        hay_otras = df_otras_prov is not None and not df_otras_prov.empty
+        if not hay_func and not hay_nf and not hay_otras:
+            continue
+
+        sheet_name = _sanitizar_nombre_hoja(proveedor, nombres_hojas_usados)
+        ws = writer.book.create_sheet(sheet_name)
+        fila_actual = 1
+
+        fila_actual = _escribir_bloque_blancos(
+            ws, df_func_prov, "Requerimientos funcionales", cols_func, fila_actual, agrupar=True
+        )
+        fila_actual = _escribir_bloque_blancos(
+            ws, df_nf_prov, "Requerimientos no funcionales", cols_nf, fila_actual, agrupar=False
+        )
+        if hay_otras:
+            fila_actual = _escribir_bloque_blancos(
+                ws, df_otras_prov, "Otras", cols_otras, fila_actual, agrupar=False,
+                filas_enteras=filas_enteras_otras
+            )
+
+        n_cols_total = max(len(cols_func), len(cols_nf), len(cols_otras))
+        for col_idx in range(1, n_cols_total + 1):
+            col_letter = openpyxl.utils.get_column_letter(col_idx)
+            max_len = 0
+            for row_idx in range(1, fila_actual):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                try:
+                    if cell.value:
+                        max_len = max(max_len, len(str(cell.value)))
+                except Exception:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_len + 4, 40)
+
+
 def escribir_hoja_blancos(writer, df_blancos_func, nombres_proveedores_func,
                            df_blancos_nf, nombres_proveedores_nf,
                            df_blancos_otras=None, nombres_proveedores_otras=None,
@@ -2554,31 +2687,46 @@ if st.session_state["archivos_cargados"]:
             else:
                 df_blancos_otras = df_blancos_col_c
 
-        escribir_hoja_blancos(
-            writer, df_blancos_func, nombres_proveedores, df_blancos_nf, nombres_proveedores,
-            df_blancos_otras, nombres_proveedores,
-            filas_enteras_otras=filas_enteras_otras,
-            nombre_hoja="% en blanco"
-        )
-
         # ---- % DILIGENCIADO (equivalente a "% en blanco" pero invertido: 100 - % en blanco) ----
         df_blancos_func_dilig = invertir_porcentaje_df(df_blancos_func)
         df_blancos_nf_dilig = invertir_porcentaje_df(df_blancos_nf)
         df_blancos_otras_dilig = invertir_porcentaje_df(df_blancos_otras, filas_sin_invertir=filas_enteras_otras)
 
-        escribir_hoja_blancos(
-            writer, df_blancos_func_dilig, nombres_proveedores, df_blancos_nf_dilig, nombres_proveedores,
-            df_blancos_otras_dilig, nombres_proveedores,
-            filas_enteras_otras=filas_enteras_otras,
-            nombre_hoja="% Diligenciado"
-        )
+        # Nota: las hojas "% en blanco" y "% Diligenciado" ya NO se escriben en el
+        # reporte final; ahora forman parte del "Reporte de validaciones" (ver más abajo).
 
         escribir_hoja_info_analisis(writer, bloques_info)
 
-    st.download_button(
-        "⬇️ Descargar reporte completo Excel",
-        buffer.getvalue(),
-        file_name=nombre_reporte,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="dl_reporte_completo"
-    )
+    # ---- REPORTE DE VALIDACIONES (hojas "% en blanco" + "% Diligenciado" + "Informacion de analisis") ----
+    buffer_validaciones = BytesIO()
+    with pd.ExcelWriter(buffer_validaciones, engine="openpyxl") as writer_val:
+        escribir_hoja_blancos(
+            writer_val, df_blancos_func, nombres_proveedores, df_blancos_nf, nombres_proveedores,
+            df_blancos_otras, nombres_proveedores,
+            filas_enteras_otras=filas_enteras_otras,
+            nombre_hoja="% en blanco"
+        )
+        escribir_hojas_diligenciado_por_proveedor(
+            writer_val, df_blancos_func_dilig, df_blancos_nf_dilig, df_blancos_otras_dilig,
+            nombres_proveedores, filas_enteras_otras=filas_enteras_otras
+        )
+        escribir_hoja_info_analisis(writer_val, bloques_info)
+
+    col_dl_reporte, col_dl_validaciones = st.columns(2)
+    with col_dl_reporte:
+        st.download_button(
+            "⬇️ Descargar reporte completo Excel",
+            buffer.getvalue(),
+            file_name=nombre_reporte,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_reporte_completo"
+        )
+    with col_dl_validaciones:
+        _nombre_reporte_val = f"reporte-validaciones-{_fecha_nombre}.xlsx"
+        st.download_button(
+            "⬇️ Descargar reporte de validaciones",
+            buffer_validaciones.getvalue(),
+            file_name=_nombre_reporte_val,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_reporte_validaciones"
+        )
