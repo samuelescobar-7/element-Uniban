@@ -1467,6 +1467,104 @@ def construir_tabla_si_d_no_e_no_funcional(detalles_globales_nf, nombres_proveed
     return df_si_no
 
 
+def construir_tabla_no_f_si_g_funcional(detalles_globales, nombres_proveedores):
+    """
+    Construye una tabla con el % de filas donde la columna F tiene respuesta NO
+    y, en esa misma fila, la columna G tiene respuesta SI, por hoja funcional
+    y por proveedor.
+
+    Devuelve un DataFrame con columnas:
+    Proceso | % NO F y SI G <prov1> | ... | % NO F y SI G <provN>
+    """
+    if not detalles_globales:
+        return None
+
+    filas = []
+    for hoja, lista_dfs in detalles_globales.items():
+        fila = {"Proceso": hoja}
+        for prov in nombres_proveedores:
+            df_prov = None
+            for df_ in lista_dfs:
+                if df_ is not None and not df_.empty and df_["Proveedor"].iloc[0] == prov:
+                    df_prov = df_
+                    break
+
+            col_name = f"% NO F y SI G {prov}"
+            if (
+                df_prov is None or df_prov.empty
+                or "Resp_F" not in df_prov.columns
+                or "Resp_G" not in df_prov.columns
+            ):
+                fila[col_name] = 0.0
+                continue
+
+            total = len(df_prov)
+            coincidencias = (
+                (df_prov["Resp_F"].map(normalizar) == "NO")
+                & (df_prov["Resp_G"].map(normalizar) == "SI")
+            ).sum()
+            fila[col_name] = round((coincidencias / total) * 100, 2) if total else 0.0
+
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"] + [f"% NO F y SI G {prov}" for prov in nombres_proveedores]
+    df_no_si = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_no_si.columns:
+            df_no_si[c] = 0.0
+    df_no_si = df_no_si[columnas_orden]
+    return df_no_si
+
+
+def construir_tabla_no_d_si_e_no_funcional(detalles_globales_nf, nombres_proveedores):
+    """
+    Construye una tabla con el % de filas donde la columna D tiene respuesta NO
+    y, en esa misma fila, la columna E tiene respuesta SI, por hoja no funcional
+    y por proveedor.
+
+    Devuelve un DataFrame con columnas:
+    Proceso | % NO D y SI E <prov1> | ... | % NO D y SI E <provN>
+    """
+    if not detalles_globales_nf:
+        return None
+
+    filas = []
+    for hoja, lista_dfs in detalles_globales_nf.items():
+        fila = {"Proceso": hoja}
+        for prov in nombres_proveedores:
+            df_prov = None
+            for df_ in lista_dfs:
+                if df_ is not None and not df_.empty and df_["Proveedor"].iloc[0] == prov:
+                    df_prov = df_
+                    break
+
+            col_name = f"% NO D y SI E {prov}"
+            if (
+                df_prov is None or df_prov.empty
+                or "Resp_D" not in df_prov.columns
+                or "Resp_E" not in df_prov.columns
+            ):
+                fila[col_name] = 0.0
+                continue
+
+            total = len(df_prov)
+            coincidencias = (
+                (df_prov["Resp_D"].map(normalizar) == "NO")
+                & (df_prov["Resp_E"].map(normalizar) == "SI")
+            ).sum()
+            fila[col_name] = round((coincidencias / total) * 100, 2) if total else 0.0
+
+        filas.append(fila)
+
+    columnas_orden = ["Proceso"] + [f"% NO D y SI E {prov}" for prov in nombres_proveedores]
+    df_no_si = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_no_si.columns:
+            df_no_si[c] = 0.0
+    df_no_si = df_no_si[columnas_orden]
+    return df_no_si
+
+
 def escribir_hoja_si_f_no_g(writer, df_si_no_func, nombres_proveedores_func,
                              df_si_no_nf, nombres_proveedores_nf,
                              nombre_hoja="% de Si (F) y NO (G)"):
@@ -1487,6 +1585,42 @@ def escribir_hoja_si_f_no_g(writer, df_si_no_func, nombres_proveedores_func,
     )
     fila_actual = _escribir_bloque_blancos(
         ws, df_si_no_nf, "Requerimientos no funcionales", columnas_nf, fila_actual, agrupar=False
+    )
+
+    n_cols_total = max(len(columnas_func), len(columnas_nf))
+    for col_idx in range(1, n_cols_total + 1):
+        col_letter = openpyxl.utils.get_column_letter(col_idx)
+        max_len = 0
+        for row_idx in range(1, fila_actual):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            try:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            except Exception:
+                pass
+        ws.column_dimensions[col_letter].width = min(max_len + 4, 40)
+
+
+def escribir_hoja_no_f_si_g(writer, df_no_si_func, nombres_proveedores_func,
+                             df_no_si_nf, nombres_proveedores_nf,
+                             nombre_hoja="% de NO (F) y SI (G)"):
+    """Escribe la hoja de validación inversa con los bloques funcional y no funcional."""
+    hay_func = df_no_si_func is not None and not df_no_si_func.empty
+    hay_nf = df_no_si_nf is not None and not df_no_si_nf.empty
+    if not hay_func and not hay_nf:
+        return
+
+    columnas_func = ["Proceso"] + [f"% NO F y SI G {prov}" for prov in nombres_proveedores_func]
+    columnas_nf = ["Proceso"] + [f"% NO D y SI E {prov}" for prov in nombres_proveedores_nf]
+
+    ws = writer.book.create_sheet(nombre_hoja)
+    fila_actual = 1
+
+    fila_actual = _escribir_bloque_blancos(
+        ws, df_no_si_func, "Requerimientos funcionales", columnas_func, fila_actual, agrupar=True
+    )
+    fila_actual = _escribir_bloque_blancos(
+        ws, df_no_si_nf, "Requerimientos no funcionales", columnas_nf, fila_actual, agrupar=False
     )
 
     n_cols_total = max(len(columnas_func), len(columnas_nf))
@@ -2801,6 +2935,8 @@ if st.session_state["archivos_cargados"]:
         df_blancos_nf = construir_tabla_blancos_no_funcional(detalles_globales_nf, nombres_proveedores)
         df_si_no_func = construir_tabla_si_f_no_g_funcional(detalles_globales, nombres_proveedores)
         df_si_no_nf = construir_tabla_si_d_no_e_no_funcional(detalles_globales_nf, nombres_proveedores)
+        df_no_si_func = construir_tabla_no_f_si_g_funcional(detalles_globales, nombres_proveedores)
+        df_no_si_nf = construir_tabla_no_d_si_e_no_funcional(detalles_globales_nf, nombres_proveedores)
         df_blancos_otras = construir_tabla_blancos_otras(data_otras_blancos, nombres_proveedores)
 
         df_conteo_registros = construir_tabla_conteo_registros(
@@ -2854,6 +2990,10 @@ if st.session_state["archivos_cargados"]:
         escribir_hoja_si_f_no_g(
             writer_val, df_si_no_func, nombres_proveedores, df_si_no_nf, nombres_proveedores,
             nombre_hoja="% de Si (F) y NO (G)"
+        )
+        escribir_hoja_no_f_si_g(
+            writer_val, df_no_si_func, nombres_proveedores, df_no_si_nf, nombres_proveedores,
+            nombre_hoja="% de NO (F) y SI (G)"
         )
         escribir_hojas_diligenciado_por_proveedor(
             writer_val, df_blancos_func_dilig, df_blancos_nf_dilig, df_blancos_otras_dilig,
