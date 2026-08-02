@@ -201,11 +201,24 @@ def es_hoja_no_funcional(nombre):
 def detectar_filas(ws):
     filas = []
     for r in range(2, ws.max_row + 1):
-        val = normalizar(ws.cell(r, 1).value)
+        valor_id = ws.cell(r, 1).value
+        val = normalizar(valor_id)
         if "*** FIN DEL DOCUMENTO ***" in val:
             break
+        if isinstance(valor_id, (int, float)) and not isinstance(valor_id, bool):
+            if math.isfinite(float(valor_id)) and float(valor_id).is_integer():
+                filas.append(r)
+                continue
         if val.isdigit():
             filas.append(r)
+            continue
+        try:
+            numero = float(val.replace(",", "."))
+            if math.isfinite(numero) and numero.is_integer():
+                filas.append(r)
+                continue
+        except ValueError:
+            pass
     return filas
 
 
