@@ -182,6 +182,21 @@ def normalizar(valor):
     return str(valor).strip().upper()
 
 
+def es_id_entero(valor):
+    if valor is None or isinstance(valor, bool):
+        return False
+    if isinstance(valor, (int, float)):
+        return math.isfinite(float(valor)) and float(valor).is_integer()
+    val = normalizar(valor)
+    if val.isdigit():
+        return True
+    try:
+        numero = float(val.replace(",", "."))
+        return math.isfinite(numero) and numero.is_integer()
+    except ValueError:
+        return False
+
+
 def es_hoja_1x(nombre):
     nombre = nombre.strip()
     prefijo = re.match(r"^(\d+\.\d+)", nombre)
@@ -205,20 +220,8 @@ def detectar_filas(ws):
         val = normalizar(valor_id)
         if "*** FIN DEL DOCUMENTO ***" in val:
             break
-        if isinstance(valor_id, (int, float)) and not isinstance(valor_id, bool):
-            if math.isfinite(float(valor_id)) and float(valor_id).is_integer():
-                filas.append(r)
-                continue
-        if val.isdigit():
+        if es_id_entero(valor_id):
             filas.append(r)
-            continue
-        try:
-            numero = float(val.replace(",", "."))
-            if math.isfinite(numero) and numero.is_integer():
-                filas.append(r)
-                continue
-        except ValueError:
-            pass
     return filas
 
 
@@ -391,13 +394,7 @@ def analizar_hoja_experiencia_raw(wb, proveedor):
     for r in range(1, ws.max_row + 1):
         val_a = ws.cell(r, 1).value
 
-        es_numero = False
-        if val_a is not None:
-            try:
-                int(str(val_a).strip())
-                es_numero = True
-            except ValueError:
-                pass
+        es_numero = es_id_entero(val_a)
 
         if es_numero:
             if r in filas_procesadas:
