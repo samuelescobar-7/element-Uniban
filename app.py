@@ -1432,6 +1432,98 @@ def escribir_hoja_ter(writer, df_ter_func, nombres_proveedores, nombre_hoja="% T
 
 
 # =========================
+# % NO/BLANCO/OTROS — Requerimientos funcionales
+# =========================
+def construir_tabla_no_blanco_otros_funcional(detalles_globales, nombres_proveedores):
+    """
+    Construye una tabla con el % de respuestas NO, blanco u otros de la columna F,
+    por hoja funcional (proceso) y por proveedor.
+
+    Devuelve un DataFrame con columnas: proceso | <proveedor1> | <proveedor2> | ...
+    """
+    if not detalles_globales:
+        return None
+
+    respuestas_excluidas = {
+        "SÍ (ESTÁNDAR ERP)",
+        "SI (COMPONENTE ADICIONAL)",
+        "DES",
+        "TER",
+    }
+
+    filas = []
+    for hoja, lista_dfs in detalles_globales.items():
+        fila = {"proceso": hoja}
+        for prov in nombres_proveedores:
+            df_prov = None
+            for df_ in lista_dfs:
+                if df_ is not None and not df_.empty and df_["Proveedor"].iloc[0] == prov:
+                    df_prov = df_
+                    break
+
+            if df_prov is None or df_prov.empty or "Resp_F" not in df_prov.columns:
+                fila[prov] = 0.0
+                continue
+
+            total = len(df_prov)
+            total_no_blanco_otros = (~df_prov["Resp_F"].map(normalizar).isin(respuestas_excluidas)).sum()
+            fila[prov] = round((total_no_blanco_otros / total) * 100, 2) if total else 0.0
+
+        filas.append(fila)
+
+    columnas_orden = ["proceso"] + nombres_proveedores
+    df_no_blanco_otros = pd.DataFrame(filas)
+    for c in columnas_orden:
+        if c not in df_no_blanco_otros.columns:
+            df_no_blanco_otros[c] = 0.0
+    df_no_blanco_otros = df_no_blanco_otros[columnas_orden]
+    return df_no_blanco_otros
+
+
+def escribir_hoja_no_blanco_otros(writer, df_no_blanco_otros_func, nombres_proveedores,
+                                  nombre_hoja="% NO-BLANCO-OTROS"):
+    """Escribe la hoja % NO-BLANCO-OTROS con el bloque Requerimientos funcionales."""
+    if df_no_blanco_otros_func is None or df_no_blanco_otros_func.empty:
+        return
+
+    columnas_func = ["proceso"] + nombres_proveedores
+    ws = writer.book.create_sheet(nombre_hoja)
+    fila_actual = 1
+    n_cols = len(columnas_func)
+
+    ws.cell(row=fila_actual, column=1, value="Requerimientos funcionales").font = openpyxl.styles.Font(bold=True, size=12)
+    if n_cols > 1:
+        ws.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=n_cols)
+    fila_actual += 1
+
+    for col_idx, col_name in enumerate(columnas_func, start=1):
+        ws.cell(row=fila_actual, column=col_idx, value=col_name).font = openpyxl.styles.Font(bold=True)
+    fila_actual += 1
+
+    df_escribir = agrupar_df_por_categoria(df_no_blanco_otros_func, columna_hoja="proceso")
+    for _, row in df_escribir.iterrows():
+        for col_idx, col_name in enumerate(columnas_func, start=1):
+            val = row.get(col_name, "")
+            if col_name != "proceso" and isinstance(val, (int, float)) and not isinstance(val, bool):
+                val = f"{val:.2f}%"
+            ws.cell(row=fila_actual, column=col_idx, value=val)
+        fila_actual += 1
+    fila_actual += 1
+
+    for col_idx in range(1, len(columnas_func) + 1):
+        col_letter = openpyxl.utils.get_column_letter(col_idx)
+        max_len = 0
+        for row_idx in range(1, fila_actual):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            try:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            except Exception:
+                pass
+        ws.column_dimensions[col_letter].width = min(max_len + 4, 40)
+
+
+# =========================
 # % EN BLANCO — Requerimientos funcionales
 # =========================
 def construir_tabla_blancos_funcional(detalles_globales, nombres_proveedores):
@@ -3112,6 +3204,8 @@ if st.session_state["archivos_cargados"]:
         escribir_hoja_des(writer, df_des_func, nombres_proveedores)
         df_ter_func = construir_tabla_ter_funcional(detalles_globales, nombres_proveedores)
         escribir_hoja_ter(writer, df_ter_func, nombres_proveedores)
+        df_no_blanco_otros_func = construir_tabla_no_blanco_otros_funcional(detalles_globales, nombres_proveedores)
+        escribir_hoja_no_blanco_otros(writer, df_no_blanco_otros_func, nombres_proveedores)
 
         # ---- % EN BLANCO (funcional F/G + no funcional D/E + Otras) — penúltima hoja del reporte ----
         df_blancos_func = construir_tabla_blancos_funcional(detalles_globales, nombres_proveedores)
